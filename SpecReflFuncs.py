@@ -95,9 +95,6 @@ class specFuncs:
         adj1 = hole_d - hole_water_d
         opp1 = adj1*(math.tan(ang1_rad))
 
-        print("theta = ",theta,"Opp1 = ",opp1)
-        print("ang1 = ",ang1)
-        print("ang1_rad = ",ang1_rad)
         # opp1 in this case represents the distance from the RH wall that the beam strikes the water surface
         # for very oblique angles or narrow holes this can be greater than the hole width - in this case
         # the beam hits the vertical wall above the water surface an undergoes another reflection before
@@ -115,7 +112,8 @@ class specFuncs:
             ang1_rad = ang1*(np.pi/180)
             opp1 = adj1*(math.tan(ang1_rad))
             beam_d = opp1
-            print("in each reflection the beam descends by {} cm".format(beam_d))
+
+            print("during each reflection the beam descends by {} cm".format(np.round(beam_d,2)))
             n_air_reflections = np.floor(adj1/(beam_d)) # nmber of reflections in air before hitting water surface
             
             # calculate horizontal distance along water surface of beam strike after reflections
@@ -131,7 +129,7 @@ class specFuncs:
 
             print("there are {} reflections above the water surface".format(n_air_reflections))
             print("the beam reaches the water surface after {} reflections".format(n_air_reflections))
-            print("the beam hits the water {}cm from the nearest wall".format(horizontal_strike_d))
+            print("the beam hits the water {}cm from the nearest wall".format(np.round(horizontal_strike_d,2)))
 
             # now subtract horizontal_strike_d from hole width to get the width of the triangle formed by the subsurface
             # beam. We have two angles in the subsurface triangle - t_theta and the right angle. Therefore we
@@ -145,9 +143,9 @@ class specFuncs:
             opp2 = adj2*(math.tan(ang2_rad))
 
             beam_d = opp2
-            print("the beam hits the vertical wall {}cm below the surface".format(beam_d))
+            print("the beam hits the vertical wall {}cm below the surface".format(np.round(beam_d,2)))
             
-            print("in each subsurface reflection the beam descends by {} cm".format(beam_d))
+            print("in each subsurface reflection the beam descends by {} cm".format(np.round(beam_d,2)))
             n_wat_reflections = np.floor(adj1/(beam_d)) # nmber of reflections in air before hitting water surface
             print("the total number of subsurface reflections is {}".format(n_wat_reflections))
 
@@ -174,7 +172,7 @@ class specFuncs:
 
             n_air_reflections = 0
             print("there are no reflections above the water surface")
-            print("the beam hits the vertical wall {}cm below the surface".format(beam_d))
+            print("the beam hits the vertical wall {}cm below the surface".format(np.round(beam_d,2)))
 
             # after the beam hits the wall it reflects back again at angle theta and gains depth
             # if the cumulative depth is less than the hole depth it reflects again until the hole depth is reached
@@ -184,7 +182,7 @@ class specFuncs:
             # trigonometry allows us to solve for the length of the horizontal, giving the position on the hole floor that
             # the beam strikes.
 
-            print("in each subsurface reflection the beam descends by {} cm".format(beam_d))
+            print("in each subsurface reflection the beam descends by {} cm".format(np.round(beam_d,2)))
             n_wat_reflections = np.floor(hole_d/beam_d) # number of reflections in air before hitting water surface
             print("the total number of subsurface reflections is {}".format(n_wat_reflections))
 
@@ -229,6 +227,6 @@ class specFuncs:
                 ((math.sin(theta-theta_2)/math.sin(theta+theta_2))**2) +
                 ((math.tan(theta-theta_2)/math.tan(theta+theta_2))**2))
         
-        print("Reflected fraction = {}".format(Rf))
+        print("Reflected fraction = {}".format(np.round(Rf,2)))
 
         return Rf
