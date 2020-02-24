@@ -58,24 +58,21 @@ class specFuncs:
         # the predicted angle (out_ang) is the angle between the transmitted beam and the vertical normal
         # beneath the water surface. The transmitted beam elevation angle (t_theta) is 
         # equal to 180 - (out_ang + 90).
+        t_theta = []
+        for i in range(len(nAir)):
+            sin_ang = nAir[i] * math.sin(SZA/180*np.pi) / nWat[i]
+            out_ang = math.asin(sin_ang)*180/np.pi
+            t_theta_temp = 180 - (out_ang+90)
+
+            check = t_theta_temp + out_ang
+            if abs(90-check) > 0.0001:
+            
+                print("\nSNELL ANGLE CALCULATION: TEST FAILED")
         
-        sin_ang = nAir * math.sin(SZA/180*np.pi) / nWat
-        out_ang = math.asin(sin_ang)*180/np.pi
-        t_theta = 180 - (out_ang+90)
+            else:
+                pass
 
-        check = t_theta + out_ang
-        if abs(90-check) > 0.0001:
-
-            print("\nERROR IN SNELL ANGLE CALCULATION: ANGLES DO NOT SUM TO 90")
-        
-        else:
-            print("\nSNELL ANGLE CALCULATION: TEST PASSED")
-
-        print("\n*** Transmitted angle info *** \n")
-        print("Snell incident angle (i.e. incident angle theta as measured from vertical (i.e. SZA) = ", SZA)
-        print("Snell refracted angle (i.e. refracted angle measured from vertical = ", out_ang)
-        print("transmitted angle t-theta (i.e. elevation angle of transmitted beam measured from horizontal) = ", t_theta)
-        print("\n************\n")
+            t_theta.append(t_theta_temp)
 
         return t_theta
 
@@ -149,7 +146,6 @@ class specFuncs:
             n_wat_reflections = np.floor(adj1/(beam_d)) # nmber of reflections in air before hitting water surface
             print("the total number of subsurface reflections is {}".format(n_wat_reflections))
 
-            
             residual_d = adj1 - (n_wat_reflections*beam_d) #adj1 is hole_d - water_d, n_refl*beam_d is total
             # depth acounted for by complete reflections, residual is depth gained between final reflection and
             # striking water surface
@@ -190,7 +186,7 @@ class specFuncs:
             residual_d = hole_d - (n_wat_reflections*beam_d) #adj1 is hole_d - water_d, n_refl*beam_d is total
             # depth acounted for by complete reflections, residual is depth gained between final reflection and
             # striking water surface
-            #
+            
             ang_top = 90-t_theta
             ang_bot = 180-(ang_top+90)
             opp = residual_d
@@ -199,7 +195,7 @@ class specFuncs:
 
         total_reflections = n_air_reflections + n_wat_reflections
                     
-        return n_air_reflections, n_wat_reflections, total_reflections
+        return n_air_reflections, n_wat_reflections, total_reflections, floor_strike_d
 
 
     def fresnel(n1, n2, k1, k2, theta):
@@ -226,7 +222,5 @@ class specFuncs:
             Rf = 0.5*(
                 ((math.sin(theta-theta_2)/math.sin(theta+theta_2))**2) +
                 ((math.tan(theta-theta_2)/math.tan(theta+theta_2))**2))
-        
-        print("Reflected fraction = {}".format(np.round(Rf,2)))
 
         return Rf
