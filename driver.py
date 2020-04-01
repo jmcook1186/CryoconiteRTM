@@ -12,16 +12,16 @@ from SpecReflFuncs import specFuncs
 # Define Hole geometry
 ######################
 
-hole_d = 50
-hole_w = 10
-hole_water_d = 30
+hole_d = 30
+hole_w = 50
+hole_water_d = 20
 hole_ar = hole_d/hole_w
-point = hole_w/2 # horizontal distance from LH wall to desired location on hole floor
+point = 40 # horizontal distance from LH wall to desired location on hole floor
 cryoconite_albedo = np.ones(470)*0.2 #constant albedo across wavelength for now
 WL = np.arange(0.3,5,0.01)
 
 # define incoming irradiance
-SZA = 65 # SZA is calculated as degrees from the vertical (zenith) - i.e. 0 is illumination from directly overhead
+SZA = 30 # SZA is calculated as degrees from the vertical (zenith) - i.e. 0 is illumination from directly overhead
 theta = 90-SZA # calculated from SZA
 # define incoming irradiance in Wm-2
 incoming = np.genfromtxt ('/home/joe/Code/CryoconiteRTM/Data/mlw_sfc_flx_frc_clr.txt', delimiter=",")
@@ -39,7 +39,6 @@ nIce = np.genfromtxt('/home/joe/Code/CryoconiteRTM/Data/ice_n.csv', delimiter=",
 nIce[nIce<1.0] = 1.0 # prevent math domain error - this is a negligible adjustment to a few wavelengths
 kIce = np.genfromtxt ('/home/joe/Code/CryoconiteRTM/Data/ice_k.csv', delimiter=",")
 
-
 # call critical angle function to determine whether the direct beam reaches the hole floor at "point"
 ang_crit, hyp = specFuncs.critical_angle(theta, hole_d, hole_w, point) # calculate critical angle and path lengh (hyp)
 
@@ -48,14 +47,14 @@ if hole_water_d == 0:
     t_theta = theta
     t_theta_mean = theta
 else:
-    t_theta = specFuncs.trans_angle(SZA,nAir,nWat) # calculate adjusted solar elevation angle after direct beam refracted at air-water boundary
+    t_theta = specFuncs.trans_angle(theta,nAir,nWat) # calculate adjusted solar elevation angle after direct beam refracted at air-water boundary
     t_theta_mean = np.mean(t_theta) # calculate a mean across wavelengths
 
 print("critical angle = ", np.round(ang_crit,2))
 print("mean transmitted angle = ", np.round(t_theta_mean,2))
 
 
-# calculate losses expected at each type of transition (air/water, water/ice)
+# set up empty lists
 R_airtowat = []
 R_wattoice = []
 energy_at_hole_floor = []
@@ -68,14 +67,14 @@ air_refl = []
 
 for i in range(len(WL)):
     
+    # calculate losses expected at each type of transition (air/water, water/ice)
     result1 = specFuncs.fresnel(nAir[i],nWat[i],kAir[i],kWat[i],theta)
     R_airtowat.append(result1)
+
     result2 = specFuncs.fresnel(nWat[i],nIce[i],kWat[i],kIce[i],t_theta[i])
     R_wattoice.append(result2)
 
-
     # direct beam only hits point on hole floor when the refracted illumination angle exceeds the critical angle
-    
     if t_theta[i] > ang_crit:
         
         print("DIRECT BEAM HITS HOLE FLOOR")
@@ -84,24 +83,28 @@ for i in range(len(WL)):
 
         energy_at_hole_floor.append(incoming_new[i]) # subract energy lost in reflection from water surface
 
+        air_refl.append(0)
+        wat_refl.append(0)
+        tot_refl.append(0)
+
     else:
         # the following function calculates the number of reflections between the hole walls before and after entering the water
         # and prior to the beam striking the hole floor
 
-        n_air_reflections, n_wat_reflections, total_reflections, floor_strike_d = specFuncs.test_multiple_reflections(theta, t_theta[i], hole_d, hole_w, hole_water_d, verbose=False)
-
+        n_air_reflections, n_wat_reflections, total_reflections, floor_strike_d = specFuncs.test_multiple_reflections(theta, t_theta[i], hole_d, hole_w, hole_water_d, nAir, nWat, verbose=False)
+ 
         tot_refl.append(total_reflections)
         wat_refl.append(n_wat_reflections)
         air_refl.append(n_air_reflections)
 
         # REDUCE POWER IN INCOMING BEAM AT EACH REFLECTION
-        for j in range(int(n_air_reflections)):
-
+        for j in range(int(n_air_reflections)+1):
+            # add one to account for the specular reflection occurring when beam hits water surface (not in air_reflections or wat_reflections)
             incoming_new[i] = incoming_new[i]*R_airtowat[i] # only the reflected energy remains available for further reflections and possible
             # interaction with the cryoconite layer
 
         for j in range(int(n_wat_reflections)):
-
+            
             incoming_new[i] = incoming_new[i]*R_wattoice[i]
 
         energy_at_hole_floor.append(incoming_new[i])

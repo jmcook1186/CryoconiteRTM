@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from SpecReflFuncs import specFuncs
 
 
+
 # SET UP SOME CONSTANTS NEEDED TO RUN FUNCS
 WL = np.arange(0.3,5,0.01)
 
@@ -59,6 +60,26 @@ def check_fresnel(nAir,nWat,kAir,kWat,WL,plot_figs=True):
 
 
 
+def check_trans_angle(nAir, nWat):
+    
+    WL = np.arange(0.3,5,0.01)
+    outList = []
+    thetaList = []
+
+    for theta in np.arange(0,90,1):
+
+        t_theta = specFuncs.trans_angle(theta,nAir,nWat)
+    
+        plt.plot(WL,t_theta, label='Theta = {}'.format(theta))
+    
+    plt.ylabel('Transmitted angle (elevation from horizontal)')
+    plt.xlim(0.3,5)
+    plt.xlabel('Wavelength (microns)')
+    plt.legend(bbox_to_anchor=(1, 1), loc='upper left', ncol=1)
+    plt.tight_layout()
+    plt.show()
+
+    return
 
 
 def check_multiple_reflections(nAir,nWat):
@@ -68,31 +89,33 @@ def check_multiple_reflections(nAir,nWat):
     n_wat_reflections_list = []
     total_reflections_list = []
     floor_strike_d_list = []
+    t_theta_list = []
     
-    for theta in np.arange(1,90,1):
+    for theta in np.arange(1,90,2):
 
-        hole_d = 50
-        hole_w = 25
-        hole_water_d = 20
+        hole_d = 30
+        hole_w = 30
+        hole_water_d = 10
         point = hole_w/2
-        SZA = 90-theta
 
-        t_theta = specFuncs.trans_angle(SZA,nAir,nWat)
+        t_theta = specFuncs.trans_angle(theta,nAir,nWat)
 
-        print("\n",theta," ", t_theta[50])
+        print("\nelevation angle = ",theta," transmitted angle (400 nm) =  ", t_theta[20])
 
-        n_air_reflections, n_wat_reflections, total_reflections, floor_strike_d = specFuncs.test_multiple_reflections(theta, t_theta[50], 
-        hole_d, hole_w, hole_water_d, verbose=False)
+        n_air_reflections, n_wat_reflections, total_reflections, floor_strike_d = specFuncs.test_multiple_reflections(theta, t_theta[0], 
+        
+        hole_d, hole_w, hole_water_d, nAir, nWat, verbose=True)
 
         n_air_reflections_list.append(n_air_reflections)
         n_wat_reflections_list.append(n_wat_reflections)
         total_reflections_list.append(total_reflections)
         floor_strike_d_list.append(floor_strike_d)
-
+        
     plt.plot(n_air_reflections_list,label='# air refls')
-    plt.plot(np.arange(1,90,1),n_wat_reflections_list, label='# wat refls')
-    plt.plot(total_reflections_list, label='# total refls')
-    plt.plot(floor_strike_d_list,label='floor strike d')
+    plt.plot(n_wat_reflections_list, label='# wat refls')
+    #plt.plot(total_reflections_list, label='# total refls')
+    #plt.plot(floor_strike_d_list,label='floor strike d')
+    plt.legend(loc='best')
 
     plt.show()
 
@@ -102,5 +125,7 @@ def check_multiple_reflections(nAir,nWat):
 
 
 # WHICH FUNCTIONS TO TEST?
-# check_fresnel(nAir,nWat,kAir,kWat,WL,plot_figs=True)
+#check_fresnel(nAir,nWat,kAir,kWat,WL,plot_figs=True)
 check_multiple_reflections(nAir,nWat)
+#check_trans_angle(nAir, nWat)
+

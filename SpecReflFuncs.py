@@ -38,7 +38,7 @@ class specFuncs:
         return ang_crit, hyp
 
 
-    def trans_angle(SZA, nAir, nWat):
+    def trans_angle(theta, nAir, nWat):
         
         """
         function calculates the adjusted angle of the direct beam accounting for refraction at the
@@ -51,7 +51,6 @@ class specFuncs:
         import math
         import numpy as np
 
-        
         # calculate adjusted angle after incoming direct beam has entered water
         # Snells Law: sin(transmitted_angle) = (nAir*sin(incident angle)) /  nWat
         # the relevant angle to use for the incoming beam is the SZA not the elevation angle because
@@ -59,169 +58,216 @@ class specFuncs:
         # the predicted angle (out_ang) is the angle between the transmitted beam and the vertical normal
         # beneath the water surface. The transmitted beam elevation angle (t_theta) is 
         # equal to 90 - out_ang.
-        t_theta = []
+
+        theta_rad = theta * (np.pi/180)
+                
+        t_theta = np.zeros(len(nAir))
 
         for i in range(len(nAir)):
-            
-            sin_ang = nAir[i] * math.sin(SZA/180*np.pi) / nWat[i]
-            out_ang = math.asin(sin_ang)*180/np.pi
-            t_theta_temp = 90 - out_ang # 180 - (out_ang+90)
 
-            check = t_theta_temp + out_ang
+            t_theta_temp = math.asin((nAir[i] * math.sin(theta_rad))/nWat[i])
 
-            if abs(90-check) > 0.0001:
-            
-                print("\nSNELL ANGLE CALCULATION: TEST FAILED")
+            t_theta[i] = t_theta_temp * 180/np.pi
+
+        return  t_theta
+
+
+    def test_multiple_reflections(theta, t_theta, hole_d, hole_w, hole_water_d, nAir, nWat, verbose = False):
         
-            else:
-                pass
-
-            t_theta.append(t_theta_temp)
-
-        return t_theta
-
-
-    def test_multiple_reflections(theta, t_theta, hole_d, hole_w, hole_water_d, verbose = False):
         """
         function tests whether a single reflection from the hole wall causes the beam to hit the hole floor.
         If not, how many reflections between the walls occur before the beam reaches the hole floor?
+        
         """
 
         import numpy as np
         import math
 
+        SZA = 90-theta
 
-        # 1) use incoming angle (theta) and the vertical distance between the hole aperture and the water surface (adj)
-        # to calculate the horizontal distance from the sunward-wall to the beam-strike point (opp) using trigonometric relation:
-        # tan(angle) = opp/adj  
+        def DoesBeamHitWall(theta, hole_d, hole_water_d, hole_w):
+
+            ang = theta
+            ang_rad = ang*(np.pi/180) # radians
+
+            SurfToWat = hole_d - hole_water_d
+            SurfStrike_d = SurfToWat/(math.tan(ang_rad))
+
+            if SurfStrike_d >= hole_w:
+                
+                BeamHitsWall = True
+
+            else:
+                BeamHitsWall = False
+
+                            
+            return BeamHitsWall, SurfStrike_d, SurfToWat
+
+
+        def ReflectionsInAir(hole_w, theta, SurfToWat, BeamHitsWall = None):
+            """dis
+            calculates number of times beam reflects from walls before hitting water surface and provides 
+            height above surface of final beam strike on wall before beam hits water
+
+            """
+
+            if BeamHitsWall:
+
+                ang = theta*(np.pi/180)
+                beam_d_air = hole_w*(math.tan(ang))
+
+                n_air_reflections = np.floor(SurfToWat/beam_d_air)
+                residual_d = SurfToWat - (n_air_reflections*beam_d_air)
+            
+            else:
+
+                beam_d_air = SurfToWat
+                n_air_reflections = 0
+                residual_d = 0
+
+            return n_air_reflections, residual_d, beam_d_air
+
+
+        def UpdateSurfStrike_d(n_air_reflections, theta, SurfStrike_d, residual_d):
+            
+            """
+            if there are reflections above the water surface, the surface strike position needs to be updated. In this initial
+            calculation, the beam overshooting the hole boundaries is the diagnostic tool used to determine whether the beam 
+            hits the wall rather than the water. Therefore, when that occurs, at least one reflection must be taken into account
+            and used to reposition the beam on the water surface after n reflections.
+
+            REVERSE is a boolean that flags whether the beam has changed direction due to an uneven number of reflections, if
+            FALSE the beam is still arriving at the hole floor from the sunward side, if False the beam has reflected and is 
+            arriving from the non-sunwards side (this changes the floor geometry calculations) 
+
+
+            NB SurfStrike_D is always expressed as distance from sunwards wall
+            """            
+
+            if n_air_reflections == 0:
+
+                SurfStrike_d = SurfStrike_d
+
+                REVERSE = False
+            
+            elif n_air_reflections %2 != 0:
+
+                ang_top = 90-theta
+                ang_bot = 180-(ang_top+90)
+                opp = residual_d
+                adj = opp/math.tan((ang_bot*(np.pi/180)))
+                SurfStrike_d = hole_w - adj
+                REVERSE = True
+
+            else:
+                ang = theta
+                ang = ang*(np.pi/180)
+                opp = residual_d
+                adj = opp/math.tan(ang)
+                SurfStrike_d = adj
+                REVERSE = False
+
+            print("SURFSTRIKE_D = ", SurfStrike_d)
+
+            return SurfStrike_d, REVERSE
+
         
-        ang1 = theta
-        ang1_rad = ang1*(np.pi/180) # radians
+        def ReflectionsInWater(hole_water_d, SZA, theta, t_theta, hole_w, SurfStrike_d, nAir, nWat, REVERSE):
+           
+            base = hole_water_d / math.tan(t_theta*(np.pi/180))
+            print(base)
+            n_wat_reflections = 0
+            reflect = False
 
-        SurfToWat = hole_d - hole_water_d
-        opp1 = SurfToWat*(math.tan(ang1_rad))
+            if REVERSE:
 
-        # opp1 in this case represents the distance from the sunwards wall that the beam strikes the water surface
-        # for very oblique angles or narrow holes this might be greater than the hole width - in this case
-        # the beam hits the vertical wall above the water surface and at least one reflection before
-        # reaching the water surface.
+                if base <= SurfStrike_d:
 
-        # Each reflection from the vertical walls will be at angle theta and the beam depth in the hole
-        # will increase by a constant amount during each reflection until the water depth is reached. We
-        # need to know the number of reflections occurring above the water surface and the horizontal 
-        # position of the beam when it eventually strikes the water. Because of the law of reflection, the angle
-        # theta will always be the angle of incidence regardless of the number of reflections occurring.
+                    n_wat_reflections = 0
+                    print("THERE ARE NO REFLECTIONS IN WATER")
+                    beam_d_wat = 0
 
-        if opp1 >= hole_w: #i.e. if the beam strikes the wall above the water
+                    reflect = False
 
-            adj1 = hole_w # take the hole width as a known length adjacent to angle 180-(theta+90) 
-            ang1 = 180-(theta+90)
-            ang1_rad = ang1*(np.pi/180) # radians
-            opp1 = adj1*(math.tan(ang1_rad))  # opp = tan(angle)*adj to find vertical distance gained in single reflection
-            beam_d_air = opp1   # re-alias for clarity
+                else:
+                    reflect = True
+                    # depth gained by first subsurface beam
+                    beam_d_wat = math.tan(t_theta*(np.pi/180)) * SurfStrike_d
+                    
+                    while reflect == True:
 
-            if verbose:
-                print("during each reflection the beam descends by {} cm".format(np.round(beam_d_air,2)))
-            
-            n_air_reflections = np.floor((SurfToWat)/(beam_d_air)) # number of reflections in air before hitting water surface
-            
-            residual_d = SurfToWat - (n_air_reflections*beam_d_air) # SurfToWat is hole_d - water_d, n_refl*beam_d is total
-            # depth acounted for by complete reflections, residual is depth gained between final reflection and
-            # striking water surface
-            
-            # calculate horizontal distance along water surface of beam strike after reflections - i.e. use residual_d as
-            # known vertical distance and angle theta as known angle to calculate horizontal distance
+                        ang_top = 90-t_theta
 
-            ang_top = 90-theta
-            ang_bot = 180-(ang_top+90)
-            opp = residual_d
-            adj = opp/math.tan((ang_bot*(np.pi/180)))  
-            horizontal_strike_d = adj
+                        depth_gained = hole_w / math.tan(ang_top * np.pi/180) 
 
-            if verbose:
-                print("there are {} reflections above the water surface".format(n_air_reflections))
-                print("the beam reaches the water surface after {} reflections".format(n_air_reflections))
-                print("the beam hits the water {}cm from the nearest wall".format(np.round(horizontal_strike_d,2)))
+                        beam_d_wat += depth_gained
+                        
+                        n_wat_reflections += 1
 
-            # now subtract horizontal_strike_d from hole width to get the width of the triangle formed by the subsurface
-            # beam. We have two angles in the subsurface triangle - t_theta and the right angle. Therefore we
-            # have one side and all three angles once the final angle has been calculated (angles add to 180).
-            # We can therefore calculate the length of the missing side (opp) using tan_ang = opp/adj
-            # opp2 is the depth beneath the water surface where the beam strikes the wall
+                        if beam_d_wat >= hole_water_d:
+                            
+                            reflect = False
 
-            adj2 = hole_w - horizontal_strike_d
-            ang2 = 180-(t_theta+90)
-            ang2_rad = ang2*(np.pi/180)
-            opp2 = adj2*(math.tan(ang2_rad))
+            else:
+                reflect = True
+                if base <= hole_w - SurfStrike_d:
 
-            beam_d_wat = opp2
-            
-            if verbose:
-                print("the beam hits the vertical wall {}cm below the surface".format(np.round(beam_d_wat,2)))
-                print("in each subsurface reflection the beam descends by {} cm".format(np.round(beam_d_wat,2)))
+                    n_wat_reflections = 0
+                    print("THERE ARE NO REFLECTIONS IN WATER")
+                    beam_d_wat = 0
+                    reflect = False
 
-            n_wat_reflections = np.floor(hole_water_d/(beam_d_wat)) # nmber of reflections in air before hitting water surface
+                else:
 
-            if verbose:
-                print("the total number of subsurface reflections is {}".format(n_wat_reflections))
+                    beam_d_wat = math.tan(t_theta*(np.pi/180)) * (hole_w - SurfStrike_d)
+                    
+                    while reflect == True:
 
-            residual_d = SurfToWat - (n_wat_reflections*beam_d_wat) #adj1 is hole_d - water_d, n_refl*beam_d is total
-            # depth acounted for by complete reflections, residual is depth gained between final reflection and
-            # striking water surface
-            #
-            ang_top = 90-t_theta
-            ang_bot = 180-(ang_top+90)
-            opp = residual_d
-            adj = opp/math.tan((ang_bot*(np.pi/180)))  
-            floor_strike_d = adj
+                        ang_top = 90-t_theta
+                        depth_gained = hole_w / math.tan(ang_top * (np.pi/180)) 
+                        beam_d_wat += depth_gained
+                        n_wat_reflections += 1
 
-        else:
-            
-            # if no reflections above water surface, jump straight to calculating suburface depth for beam striking hole wall
-            
-            adj2 = hole_w - opp1
-            ang2 = 180-(t_theta+90)
-            ang2_rad = ang2*(np.pi/180)
-            opp2 = adj2*(math.tan(ang2_rad))
+                        if beam_d_wat >= hole_water_d:
+                            
+                            reflect = False
 
-            beam_d = opp2
 
-            n_air_reflections = 0
+            floor_strike_d = 0
 
-            if verbose:
-                print("there are no reflections above the water surface")
-                print("the beam hits the vertical wall {}cm below the surface".format(np.round(beam_d,2)))
 
-            # after the beam hits the wall it reflects back again at angle theta and gains depth
-            # if the cumulative depth is less than the hole depth it reflects again until the hole depth is reached
-            # The total number of complete reflections (n_reflections) is the number of loss terms to include. The
-            # number of reflections multiplied by the depth gained per reflection, subtracted from the hole depth gives
-            # the residual depth - the height of the triangle formed by the beam on the final reflection and the hole floor.
-            # trigonometry allows us to solve for the length of the horizontal, giving the position on the hole floor that
-            # the beam strikes.
+            return n_wat_reflections, beam_d_wat, floor_strike_d
 
-            if verbose:
-                print("in each subsurface reflection the beam descends by {} cm".format(np.round(beam_d,2)))
-            
-            n_wat_reflections = np.floor(hole_water_d/beam_d) # number of reflections in air before hitting water surface
+
+
+        ############################################################
+
+
+        beamHitsWall, SurfStrike_d, SurfToWat = DoesBeamHitWall(theta, hole_d, hole_water_d, hole_w)
     
-            if verbose:
-                print("the total number of subsurface reflections is {}".format(n_wat_reflections))
+        n_air_reflections, residual_d, beam_d_air = ReflectionsInAir(hole_w, theta,SurfToWat, beamHitsWall)
 
-            
-            residual_d = hole_d - (n_wat_reflections*beam_d) #adj1 is hole_d - water_d, n_refl*beam_d is total
-            # depth acounted for by complete reflections, residual is depth gained between final reflection and
-            # striking water surface
-            
-            ang_top = 90-t_theta
-            ang_bot = 180-(ang_top+90)
-            opp = residual_d
-            adj = opp/math.tan((ang_bot*(np.pi/180)))  
-            floor_strike_d = adj
+        SurfStrike_d, REVERSE = UpdateSurfStrike_d(n_air_reflections, theta, SurfStrike_d, residual_d)
+
+        n_wat_reflections, beam_d_wat, floor_strike_d = ReflectionsInWater(hole_water_d, SZA, theta, t_theta, hole_w, SurfStrike_d, nAir, nWat, REVERSE)
 
         total_reflections = n_air_reflections + n_wat_reflections
+
+
+        if verbose:
+            print("during each reflection the beam descends by {} cm".format(np.round(beam_d_air,2)))
+            print("there are {} reflections above the water surface".format(n_air_reflections))
+            print("the beam reaches the water surface after {} reflections".format(n_air_reflections))
+            print("the beam hits the water {}cm from the nearest wall".format(np.round(SurfStrike_d,2)))
+            print("hole width",hole_w)
+            print("SurfStrike_d = ",SurfStrike_d)
+            print("the beam hits the vertical wall {}cm below the surface".format(np.round(beam_d_wat,2)))
+            print("in each subsurface reflection the beam descends by {} cm".format(np.round(beam_d_wat,2)))
+            print("the total number of subsurface reflections is {}".format(n_wat_reflections))
+
                     
         return n_air_reflections, n_wat_reflections, total_reflections, floor_strike_d
+
 
 
     def fresnel(n1, n2, k1, k2, theta):
@@ -242,6 +288,7 @@ class specFuncs:
             Rf = (((n1-1)**2)+k1**2) / (((n2-1)**2)+k2**2)
         
         else:
+
             theta = math.radians(theta)
             theta_2 = math.asin(1/n2*(math.sin(theta)))
             
@@ -251,8 +298,3 @@ class specFuncs:
 
         return Rf
 
-
-
-import math
-
-math.asin(1/1.33*(math.sin(10)))
