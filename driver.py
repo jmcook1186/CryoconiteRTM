@@ -7,13 +7,10 @@ from snicar8d_GO import snicar8d_GO
 import matplotlib.pyplot as plt
 import numpy as np
 
-# TODO: Find and debug edge cases (e.g. small water depths can lead to -ve #reflections)
-# TODO: consider the use of floor_strike_d to examine energy distribution across floor 
 
-
-######################
-# Define Hole geometry
-######################
+########################
+# 1 DEFINE HOLE GEOMETRY
+########################
 
 hole_d = 50
 hole_w = 50
@@ -23,14 +20,45 @@ point = hole_w/2 # horizontal distance from LH wall to desired location on hole 
 cryoconite_albedo = np.ones(470)*0.2 #constant albedo across wavelength for now
 WL = np.arange(0.3,5,0.01)
 
-# define incoming irradiance
-SZA = 70 # SZA is calculated as degrees from the vertical (zenith) - i.e. 0 is illumination from directly overhead
-theta = 90-SZA # calculated from SZA
-# define incoming irradiance in Wm-2
-incoming = np.genfromtxt ('/home/joe/Code/CryoconiteRTM/Data/mlw_sfc_flx_frc_clr.txt', delimiter=",")
+Mie = True
+GeometricOptics = False
 
-# define n and k for air (array of ones)
-nAir = np.ones(shape=(470))
+####################
+## 2. CONFIGURE RTM 
+####################
+
+DIRECT   = 0        # 1= Direct-beam incident flux, 0= Diffuse incident flux
+APRX_TYP = 1        # 1= Eddington, 2= Quadrature, 3= Hemispheric Mean
+DELTA    = 1        # 1= Apply Delta approximation, 0= No delta
+SZA = 70 # SZA is calculated as degrees from the vertical (zenith) - i.e. 0 is illumination from directly overhead
+coszen   = math.cos(SZA*(np.pi/180))    # if DIRECT give cosine of solar zenith angle 
+incoming = np.genfromtxt ('/home/joe/Code/CryoconiteRTM/Data/mlw_sfc_flx_frc_clr.txt', delimiter=",") # path to I* file
+
+
+#############################################
+## 3. SET PHYSICAL PROPERTIES OF THE ICE/SNOW
+#############################################
+
+rho_snw = [700] # density of each layer (unit = kg m-3)
+# if using Mie optical properties, set spherical grain radius
+rds_snw = [1500]
+# if using GeometricOptics, set grain side_length and depth
+side_length = [15000] 
+depth = [15000]
+
+#############################################################
+# END OF USER INPUT (i.e. leave all remaining code unchanged)
+#############################################################
+
+#################################
+# HARD CODED VARIABLE DEFINITIONS
+#################################
+
+dz = [hole_d/100] # thickness of each vertical layer (unit = m)
+nbr_lyr = len(dz)  # number of snow layers
+R_sfc = np.mean(cryoconite_albedo) # reflectance of undrlying surface - set across all wavelengths
+theta = 90-SZA # calculated from SZA
+nAir = np.ones(shape=(470)) # define n and k for air (array of ones)
 kAir = np.zeros(shape=(470))+0.00000001
 
 # import spectral refractive index for water
@@ -42,25 +70,9 @@ nIce = np.genfromtxt('/home/joe/Code/CryoconiteRTM/Data/ice_n.csv', delimiter=",
 nIce[nIce<1.0] = 1.0 # prevent math domain error - this is a negligible adjustment to a few wavelengths
 kIce = np.genfromtxt ('/home/joe/Code/CryoconiteRTM/Data/ice_k.csv', delimiter=",")
 
-
-
-
-
-
-# call critical angle function to determine whether the direct beam reaches the hole floor at "point"
-ang_crit, hyp = specFuncs.critical_angle(theta, hole_d, hole_w, point) # calculate critical angle and path lengh (hyp)
-
-# if there is no water, no refraction of incoming beam occurs so t_theta = theta
-if hole_water_d == 0:
-    t_theta = theta
-    t_theta_mean = theta
-else:
-    t_theta = specFuncs.trans_angle(theta,nAir,nWat) # calculate adjusted solar elevation angle after direct beam refracted at air-water boundary
-    t_theta_mean = np.mean(t_theta) # calculate a mean across wavelengths
-
-print("critical angle = ", np.round(ang_crit,2))
-print("mean transmitted angle = ", np.round(t_theta_mean,2))
-
+####################################
+# CALCULATE TRANSPORT OF DIRECT BEAM
+####################################
 
 # set up empty lists
 R_airtowat = []
@@ -72,6 +84,16 @@ tot_refl = []
 wat_refl = []
 air_refl = []
 
+# call critical angle function to determine whether the direct beam reaches the hole floor at "point"
+ang_crit, hyp = specFuncs.critical_angle(theta, hole_d, hole_w, point) # calculate critical angle and path lengh (hyp)
+
+# if there is no water, no refraction of incoming beam occurs so t_theta = theta
+if hole_water_d == 0:
+    t_theta = theta
+    t_theta_mean = theta
+
+else: # calculate adjusted solar elevation angle after direct beam refracted at air-water boundary
+    t_theta = specFuncs.trans_angle(theta,nAir,nWat) 
 
 for i in range(len(WL)):
     
@@ -82,12 +104,12 @@ for i in range(len(WL)):
     result2 = specFuncs.fresnel(nWat[i],nIce[i],kWat[i],kIce[i],t_theta[i])
     R_wattoice.append(result2)
 
-    # direct beam only hits point on hole floor when the refracted illumination angle exceeds the critical angle
+    # direct beam only hits point on hole floor when the refracted illumination angle exceeds the critical angle,
+
     if t_theta[i] > ang_crit:
         
-        print("DIRECT BEAM HITS HOLE FLOOR")
-
-        incoming_new[i] = incoming_new[i]*(1-R_airtowat[i])
+        if hole_water_d > 0: # if there is water, some energy is lost when beam enters from air
+            incoming_new[i] = incoming_new[i]*(1-R_airtowat[i])
 
         energy_at_hole_floor.append(incoming_new[i]) # subract energy lost in reflection from water surface
 
@@ -96,12 +118,13 @@ for i in range(len(WL)):
         tot_refl.append(0)
 
     else:
-        # the following function calculates the number of reflections between the hole walls before and after entering the water
-        # and prior to the beam striking the hole floor
+        # if the beam does not directly illuminate the point on the floor, it may still reach the floor after multiple reflections
+        # betwen the hole walls. The following function calculates the number of reflections between the hole walls before 
+        # and after entering the water and prior to the beam striking the hole floor
 
         n_air_reflections, n_wat_reflections, total_reflections, floor_strike_d = specFuncs.test_multiple_reflections(theta, t_theta[i], hole_d, hole_w, hole_water_d, nAir, nWat, verbose=False)
  
-        tot_refl.append(total_reflections)
+        tot_refl.append(total_reflections) # append result at each wavelength to output list
         wat_refl.append(n_wat_reflections)
         air_refl.append(n_air_reflections)
 
@@ -115,102 +138,12 @@ for i in range(len(WL)):
             
             incoming_new[i] = incoming_new[i]*R_wattoice[i]
 
-        dir_energy_at_hole_floor.append(incoming_new[i])
+        dir_energy_at_hole_floor.append(incoming_new[i]) # this gives the amount of energy available at the hole floor - a proportion is absorbed by conite
 
 
-
-total_incoming_energy = np.sum(incoming)
-
-dir_energy_at_hole_floor = np.array(dir_energy_at_hole_floor)
-dir_total_energy_at_hole_floor = np.sum(dir_energy_at_hole_floor)
-
-dir_energy_absorbed_by_cryoconite = dir_energy_at_hole_floor * (1-cryoconite_albedo)
-dir_total_energy_absorbed_by_cryoconite = np.sum(dir_energy_absorbed_by_cryoconite)
-print("total incoming energy = ",np.round(total_incoming_energy,5))
-
-print("total_energy_absorbed_by_cryoconite = ", np.round(dir_total_energy_absorbed_by_cryoconite,2))
-print("total energy at hole floor = ", np.round(dir_total_energy_at_hole_floor,2))
-
-print("proportion of incoming energy reaching hole floor = ", np.round(dir_total_energy_at_hole_floor/total_incoming_energy,5))
-print("proportion of incoming energy absorbed = ", np.round(dir_total_energy_absorbed_by_cryoconite/total_incoming_energy,5))
-
-plt.plot(WL,dir_energy_at_hole_floor.T,label='direct energy at hole floor (w/m2)')
-plt.plot(WL,dir_energy_absorbed_by_cryoconite.T,label='direct energy absorbed by CC (w/m2)')
-plt.plot(WL,incoming,label='total incoming energy (w/m2)')
-plt.xlim(0.3,5),plt.xlabel('Wavelength (microns)')
-plt.ylabel('Energy (W/m2)')
-plt.legend(loc='best')
-plt.show()
-
-
-
-
-
-
-
-
-
-
-
-
-"""
-
-#####################################################################
-################# BioSNICAR_GO DRIVER SCRIPT ########################
-
-This script is used to configure the 2-stream radiative transfer
-model BioSNICAR_GO. Here variable values are defined, the model called
-and the results plotted. 
-
-NB. Setting Mie = 1, GO = 0 and algal impurities = 0 is equivalent to
-running the original SNICAR model of Flanner et al. (2007, 2009)
-
-Author: Joseph Cook, October 2019
-
-######################################################################
-######################################################################
-
-
-"""
-
-###########################
-# 1) Import SNICAR function
-
-
-
-# 2) CHOOSE METHOD FOR DETERMINING OPTICAL PROPERTIES OF ICE GRAINS
-# for small spheres choose Mie, for hexagonal plates or columns of any size
-# choose GeometricOptics
-Mie = True
-GeometricOptics = False
-
-######################################
-## 2. RADIATIVE TRANSFER CONFIGURATION
-
-DIRECT   = 0        # 1= Direct-beam incident flux, 0= Diffuse incident flux
-APRX_TYP = 1        # 1= Eddington, 2= Quadrature, 3= Hemispheric Mean
-DELTA    = 1        # 1= Apply Delta approximation, 0= No delta
-coszen   = 0.57    # if DIRECT give cosine of solar zenith angle 
-
-#############################################
-## 3. SET PHYSICAL PROPERTIES OF THE ICE/SNOW
-
-dz = [hole_d/100] # thickness of each vertical layer (unit = m)
-nbr_lyr = len(dz)  # number of snow layers
-R_sfc = 0.15 # reflectance of undrlying surface - set across all wavelengths
-rho_snw = [700] # density of each layer (unit = kg m-3)
-
-#SET ICE GRAIN DIMENSIONS
-# if using Mie optical properties, set rds_snw
-rds_snw = [1500]
-
-# if using GeometricOptics, set side_length and depth
-side_length = [15000] 
-depth = [15000]
-
-
-##############################################
-## 4) SET LAP CHARACTERISTICS
+####################################################
+## CALCULATE DIFFUSE ENERGY FLUX REACHING HOLE FLOOR
+####################################################
 
 nbr_aer = 16 # Define total number of different LAPs/aerosols in model
 
@@ -253,9 +186,6 @@ mss_cnc_glacier_algae1 = [0]    # glacier algae type1
 mss_cnc_glacier_algae2 = [0]    # glacier algae type2
 
 
-##########################################################################
-################## CALL FUNCTIONS AND PLOT OUTPUTS #######################
-
 # SET FILE NAMES CONTAINING OPTICAL PARAMETERS FOR ALL IMPURITIES:
 
 FILE_soot1  = 'mie_sot_ChC90_dns_1317.nc'
@@ -275,6 +205,8 @@ FILE_snw_alg  = snw_alg # snow algae (c nivalis)
 FILE_glacier_algae1 = glacier_algae1 # Glacier algae
 FILE_glacier_algae2 = glacier_algae2 # Glacier algae
 
+
+# call snicar functions
 
 if Mie == True and GeometricOptics == True:
     print("ERROR: BOTH MIE AND GO SELECTED: PLEASE CHOOSE ONE")
@@ -300,12 +232,33 @@ else:
     print("NEITHER MIE NOR GO SELECTED: PLEASE CHOOSE ONE")
 
 
-diffuse_energy_absorbed_by_cryoconite = F_btm_net[0] * cryoconite_albedo
+
+
+########################################
+# CALCULATE AND DISPLAY OUTPUT VARIABLES
+########################################
+
+dir_energy_absorbed_by_cryoconite = dir_energy_at_hole_floor * (1-cryoconite_albedo)
+
+dir_total_energy_absorbed_by_cryoconite = np.sum(dir_energy_absorbed_by_cryoconite)
+
+diffuse_energy_absorbed_by_cryoconite = F_btm_net * (1-cryoconite_albedo)
 
 total_energy_absorbed_by_cryoconite = diffuse_energy_absorbed_by_cryoconite + dir_energy_absorbed_by_cryoconite
 
-plt.figure()
-plt.plot(total_energy_absorbed_by_cryoconite)
+total_incoming_energy = np.sum(incoming)
+
+dir_energy_at_hole_floor = np.array(dir_energy_at_hole_floor)
+
+dir_total_energy_at_hole_floor = np.sum(dir_energy_at_hole_floor)
+
+
+plt.plot(WL,total_energy_absorbed_by_cryoconite.T,label='total energy absorbed by CC (w/m2)')
+plt.plot(WL,incoming,label='total incoming energy (w/m2)')
+plt.xlim(0.3,5),plt.xlabel('Wavelength (microns)')
+plt.ylabel('Energy (W/m2)')
+plt.legend(loc='best')
+
 plt.show()
 
 
