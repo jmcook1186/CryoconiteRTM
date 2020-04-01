@@ -167,15 +167,12 @@ class specFuncs:
                 SurfStrike_d = adj
                 REVERSE = False
 
-            print("SURFSTRIKE_D = ", SurfStrike_d)
-
             return SurfStrike_d, REVERSE
 
         
         def ReflectionsInWater(hole_water_d, SZA, theta, t_theta, hole_w, SurfStrike_d, nAir, nWat, REVERSE):
            
             base = hole_water_d / math.tan(t_theta*(np.pi/180))
-            print(base)
             n_wat_reflections = 0
             reflect = False
 
@@ -184,7 +181,6 @@ class specFuncs:
                 if base <= SurfStrike_d:
 
                     n_wat_reflections = 0
-                    print("THERE ARE NO REFLECTIONS IN WATER")
                     beam_d_wat = 0
 
                     reflect = False
@@ -213,7 +209,6 @@ class specFuncs:
                 if base <= hole_w - SurfStrike_d:
 
                     n_wat_reflections = 0
-                    print("THERE ARE NO REFLECTIONS IN WATER")
                     beam_d_wat = 0
                     reflect = False
 
