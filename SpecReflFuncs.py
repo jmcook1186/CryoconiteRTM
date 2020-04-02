@@ -1,5 +1,35 @@
 """
-Class specFuncs contains functions for specular reflection and cryoconite hole geometry calculations
+
+Class specFuncs contains functions for specular reflection, fresnel and snells law
+functions that enable calculation of losses and transfers from the direct beam.
+
+Functions in this class include:
+
+1) critical angle
+    Calculates minimum transmitted elevation angle required for given point on hole floor to be directly illuminated
+
+2)trans_angle
+    Calculates angle of beam after it has been refracted at the air/water boundary
+
+3) test_multiple_reflections
+    Calculates the total nmber of reflections occurring above and below the water surface for beams that hit the hole walls
+    Contains embedded methods:
+    a) DoesBeamHitWall
+        Checks whether the beam strikes the hole wall before the water surface
+    b) ReflectionsInAir
+        Calculates the number of times the beam reflects between the hole walls before hitting the water surface
+    c) UpdateSurfStrike
+        Calculates the distance from the sunward wall that the beam strikes the water surface, and also sets the boolean
+        "REVERSE" to true if the beam has reflected an odd number of times and is therefore incident from the sun-facing side.
+    d) ReflectionsInWater
+        Calculates how many times the beam reflects between the walls under the water before hitting the hole floor
+
+4) fresnel
+    Calculates the magnitude of energy losses expected at each material boundary (air/water, water/ice)
+
+AUTHOR: JOSEPH COOK, April 2020
+www.tothepoles.co.uk
+ww.github.com/jmcook1186
 
 """
 
@@ -105,7 +135,7 @@ class specFuncs:
 
 
         def ReflectionsInAir(hole_w, theta, SurfToWat, BeamHitsWall = None):
-            """dis
+            """
             calculates number of times beam reflects from walls before hitting water surface and provides 
             height above surface of final beam strike on wall before beam hits water
 
@@ -124,7 +154,7 @@ class specFuncs:
                 beam_d_air = SurfToWat
                 n_air_reflections = 0
                 residual_d = 0
-
+            
             return n_air_reflections, residual_d, beam_d_air
 
 
@@ -205,6 +235,7 @@ class specFuncs:
                             reflect = False
 
             else:
+
                 reflect = True
                 if base <= hole_w - SurfStrike_d:
 
@@ -234,8 +265,7 @@ class specFuncs:
             return n_wat_reflections, beam_d_wat, floor_strike_d
 
 
-
-        ############################################################
+       ############################################################
 
 
         beamHitsWall, SurfStrike_d, SurfToWat = DoesBeamHitWall(theta, hole_d, hole_water_d, hole_w)
@@ -261,7 +291,110 @@ class specFuncs:
             print("the total number of subsurface reflections is {}".format(n_wat_reflections))
 
                     
-        return n_air_reflections, n_wat_reflections, total_reflections, floor_strike_d
+        return n_air_reflections, n_wat_reflections, total_reflections, floor_strike_d, SurfStrike_d, beamHitsWall
+
+
+
+    def CalculatePathLength(hole_water_d, hole_w, BeamHitsWall, t_theta, SurfStrike_d, n_wat_reflections, ang_crit):
+        
+        """
+        
+        Function calculates the total path length travelled by beam in water
+
+        """
+        import math
+        import numpy as np
+
+        if t_theta > ang_crit:
+            
+            if hole_water_d > 0:
+                
+                ang_top = 90 - t_theta
+                beam_d_wat = hole_water_d
+                base = beam_d_wat * math.tan(ang_top*(np.pi/180))
+                PathLengthInWat = math.sqrt(beam_d_wat**2 + base **2)
+
+            else:
+
+                PathLengthInWat = 0
+        
+        else:
+
+            if hole_water_d == 0:
+
+
+                PathLengthInWat = 0
+            
+            else:
+
+                if BeamHitsWall:
+                    # start with first subsurface path (surface strike poition to wall) 
+
+                    beam_d_wat1 = math.tan(t_theta*(np.pi/180)) * SurfStrike_d
+
+                    hyp1 = math.sqrt((beam_d_wat1**2)+(SurfStrike_d**2))
+
+                    # subsequent paths traverse the entire hole width, for the number of reflections
+                    # defined in n_watreflections
+                    ang_top = 90 - t_theta
+                    
+                    beam_d_wat2 = hole_w / math.tan(ang_top*(np.pi/180))
+
+                    hyp2 = math.sqrt((beam_d_wat2**2)+(hole_w)**2)
+
+                    # final path is from the last wall reflection to the floor, which may not be 
+                    # traverse the full hole width
+
+                    residual_d = hole_water_d - (beam_d_wat1 + (beam_d_wat2 * n_wat_reflections))
+
+                    base = residual_d* math.tan(ang_top*(np.pi/180))
+
+                    hyp3 = math.sqrt((residual_d**2)+(base**2))
+
+                    # total path length is sum of all hypotenuses
+
+                    PathLengthInWat = hyp1 + (hyp2 * n_wat_reflections) + hyp3
+
+                else:
+
+                    ang_top = 90 - t_theta
+                    base = hole_water_d * math.tan(ang_top*(np.pi/180))
+                    PathLengthInWat = math.sqrt(base**2 + hole_water_d**2)
+
+        return PathLengthInWat
+
+
+    def AttenuateBeam(PathLengthInWat, kWat, dir_energy_at_hole_floor, WL):
+        """
+        Function uses imaginary refractive index to calculate absorption coefficient (1/m). The
+        product of absorption coefficient and path length (m) is dimensionless attenuation factor used
+        to attenuate the beam due to absorption by water
+
+        """
+        import numpy as np
+
+        abs_coeff = np.zeros(len(WL))
+        
+        if PathLengthInWat != 0:
+
+            for i in range(len(WL)):
+
+                abs_coeff[i] = 4*np.pi*kWat[i] / WL[i]
+
+            norm_abs_coeff = abs_coeff * (PathLengthInWat/100) # multiply abs coeff (/m) by path length in m
+            
+            energyLoss = dir_energy_at_hole_floor * norm_abs_coeff
+
+
+        else:
+
+            energyLoss = np.zeros(len(WL))
+
+        
+        dir_energy_at_hole_floor = dir_energy_at_hole_floor - energyLoss
+        dir_energy_at_hole_floor[dir_energy_at_hole_floor < 0] =0
+
+        return dir_energy_at_hole_floor
 
 
 
