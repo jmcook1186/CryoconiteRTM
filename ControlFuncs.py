@@ -31,9 +31,10 @@ class ControlFuncs:
         from snicar8d_GO import snicar8d_GO
         from SpecReflFuncs import specFuncs
 
-        #################################
-        # HARD CODED VARIABLE DEFINITIONS
-        #################################
+        #############################################
+        # HARD CODED AND DERIVED VARIABLE DEFINITIONS
+        #############################################
+
 
         dz = [hole_d/100] # thickness of each vertical layer (unit = m)
         nbr_lyr = len(dz)  # number of snow layers
@@ -55,9 +56,6 @@ class ControlFuncs:
         APRX_TYP = 1        # 1= Eddington, 2= Quadrature, 3= Hemispheric Mean
         DELTA    = 1        # 1= Apply Delta approximation, 0= No delta
         coszen   = math.cos(SZA*(np.pi/180))    # if DIRECT give cosine of solar zenith angle 
-        ####################################
-        # CALCULATE TRANSPORT OF DIRECT BEAM
-        ####################################
 
         # set up empty lists
         R_airtowat = []
@@ -65,12 +63,13 @@ class ControlFuncs:
         dir_energy_at_hole_floor = []
         upbeam = []
         incoming_new = np.copy(incoming)
-        tot_refl = []
-        wat_refl = []
-        air_refl = []
 
-        # call critical angle function to determine whether the direct beam reaches the hole floor at "point"
-        ang_crit, hyp = specFuncs.critical_angle(theta, hole_d, hole_w, point) # calculate critical angle and path lengh (hyp)
+
+        ####################################
+        # CALCULATE TRANSPORT OF DIRECT BEAM
+        ####################################
+
+        # 1) Illumination geometry
 
         # if there is no water, no refraction of incoming beam occurs so t_theta = theta
         if hole_water_d == 0:
@@ -79,6 +78,11 @@ class ControlFuncs:
 
         else: # calculate adjusted solar elevation angle after direct beam refracted at air-water boundary
             t_theta = specFuncs.trans_angle(theta,nAir,nWat) 
+
+        # call critical angle function to determine whether the direct beam reaches the hole floor at "point"
+        ang_crit = specFuncs.critical_angle(theta, hole_d, hole_w, point) # calculate critical angle
+
+        # 2) For each wavelength, calculate losses at medium boundaries and apply for n interactions
 
         for i in range(len(WL)):
             
@@ -89,50 +93,55 @@ class ControlFuncs:
             result2 = specFuncs.fresnel(nWat[i],nIce[i],kWat[i],kIce[i],t_theta[i])
             R_wattoice.append(result2)
 
-            # direct beam only hits point on hole floor when the refracted illumination angle exceeds the critical angle,
-
             if t_theta[i] > ang_crit:
+
+                # direct beam only hits point on hole floor when the refracted illumination angle 
+                # exceeds the critical angle,
                 
-                if hole_water_d > 0: # if there is water, some energy is lost when beam enters from air
-                    
+                if hole_water_d > 0: 
+                    # if there is water, some energy is lost when beam enters from air
                     incoming_new[i] = incoming_new[i]*(1-R_airtowat[i])
 
+                # the beam energy at the hole floor is just the total incoming after
+                #  air/water fresnel loss
                 dir_energy_at_hole_floor.append(incoming_new[i]) 
 
-                air_refl.append(0)
-                wat_refl.append(0)
-                tot_refl.append(0)
+                # there are no reflections and the beam does not hit the hole wall
                 beamHitsWall = False
                 SurfStrike_d = hole_w/2
                 n_wat_reflections = 0
 
-            else:
-                # if the beam does not directly illuminate the point on the floor, it may still reach the floor after multiple reflections
-                # betwen the hole walls. The following function calculates the number of reflections between the hole walls before 
-                # and after entering the water and prior to the beam striking the hole floor
 
-                n_air_reflections, n_wat_reflections, total_reflections, floor_strike_d, SurfStrike_d, beamHitsWall = specFuncs.test_multiple_reflections(
+            else:
+                # if the beam does not directly illuminate the point on the floor, 
+                # it may still reach the floor after multiple reflections betwen the 
+                # hole walls. The following function calculates the number of reflections
+                # between the hole walls before and after entering the water and prior 
+                # to the beam striking the hole floor
+
+                n_air_reflections, n_wat_reflections, total_reflections, SurfStrike_d,\
+                beamHitsWall = specFuncs.test_multiple_reflections(
                     theta, t_theta[i], hole_d, hole_w, hole_water_d, nAir, nWat, verbose=False)
         
-                tot_refl.append(total_reflections) # append result at each wavelength to output list
-                wat_refl.append(n_wat_reflections)
-                air_refl.append(n_air_reflections)
-
-                # REDUCE POWER IN INCOMING BEAM AT EACH REFLECTION
+                # Use calculated # reflections to remove energy from the beam
                 for j in range(int(n_air_reflections)+1):
-                    # add one to account for the specular reflection occurring when beam hits water surface (not in air_reflections or wat_reflections)
-                    incoming_new[i] = incoming_new[i]*R_airtowat[i] # only the reflected energy remains available for further reflections and possible
-                    # interaction with the cryoconite layer
+                    # add one to account for the specular reflection occurring when beam 
+                    # hits water surface (not in air_reflections or wat_reflections)
+                    incoming_new[i] = incoming_new[i]*R_airtowat[i] 
 
                 for j in range(int(n_wat_reflections)):
                     
                     incoming_new[i] = incoming_new[i]*R_wattoice[i]
-
-                dir_energy_at_hole_floor.append(incoming_new[i]) # this gives the amount of energy available at the hole floor - a proportion is absorbed by conite
+                
+                # this gives the amount of energy available at the hole floor
+                dir_energy_at_hole_floor.append(incoming_new[i]) 
                 
         
-        PathLengthInWat = specFuncs.CalculatePathLength(hole_water_d, hole_w, beamHitsWall, t_theta[i], SurfStrike_d, n_wat_reflections, ang_crit)        
-        
+        # 3) calculate absorptive losses due to transport through water
+        # First calculate path length in water, then calculate loss
+        # using path length and absorption coefficient
+        PathLengthInWat = specFuncs.CalculatePathLength(hole_water_d, hole_w, beamHitsWall, t_theta[i],\
+        SurfStrike_d, n_wat_reflections, ang_crit)        
         dir_energy_at_hole_floor = specFuncs.AttenuateBeam(PathLengthInWat, kWat, dir_energy_at_hole_floor, WL)
 
 
@@ -235,13 +244,6 @@ class ControlFuncs:
 
         diffuse_energy_absorbed_by_cryoconite = F_btm_net * (1-cryoconite_albedo)
 
-        total_energy_absorbed_by_cryoconite = diffuse_energy_absorbed_by_cryoconite + dir_energy_absorbed_by_cryoconite
-
         total_incoming_energy = np.sum(incoming)
-
-        dir_energy_at_hole_floor = np.array(dir_energy_at_hole_floor)
-
-        dir_total_energy_at_hole_floor = np.sum(dir_energy_at_hole_floor)
-
         
         return dir_energy_absorbed_by_cryoconite, diffuse_energy_absorbed_by_cryoconite, total_incoming_energy

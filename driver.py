@@ -34,7 +34,7 @@ GeometricOptics = False
 ## 2. CONFIGURE RTM 
 ####################
 
-SZA = 50 # SZA is calculated as degrees from the vertical (zenith) - i.e. 0 is illumination from directly overhead
+SZA = 10 # SZA is calculated as degrees from the vertical (zenith) - i.e. 0 is illumination from directly overhead
 incoming = np.genfromtxt ('/home/joe/Code/CryoconiteRTM/Data/mlw_sfc_flx_frc_clr.txt', delimiter=",") # path to I* file
 
 #############################################
@@ -48,18 +48,19 @@ rds_snw = [1500]
 side_length = [15000] 
 depth = [15000]
 
+
 #############################################################
 # END OF USER INPUT (i.e. leave all remaining code unchanged)
 #############################################################
 
-
-
-#CALL CONTROL FUNCTION
 dir_energy_absorbed_by_cryoconite, diffuse_energy_absorbed_by_cryoconite, total_incoming_energy = ControlFuncs.CalculateFluxes(
     hole_d, hole_w, hole_water_d, point, cryoconite_albedo, WL, Mie, GeometricOptics, SZA, incoming, rho_snw, rds_snw, side_length, depth)
 
 
-total_energy_absorbed_by_cryoconite = dir_energy_absorbed_by_cryoconite + diffuse_energy_absorbed_by_cryoconite
+total_energy_absorbed_by_cryoconite = diffuse_energy_absorbed_by_cryoconite + dir_energy_absorbed_by_cryoconite
+
+BB_output = np.sum(total_energy_absorbed_by_cryoconite, axis=1)
+
 
 plt.figure()
 plt.plot(WL,total_energy_absorbed_by_cryoconite.T,label='total energy absorbed by CC (w/m2)')
@@ -70,4 +71,4 @@ plt.legend(loc='best')
 
 plt.show()
 
-
+print(BB_output)

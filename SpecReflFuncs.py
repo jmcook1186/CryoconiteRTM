@@ -65,7 +65,7 @@ class specFuncs:
         ang_crit = math.asin(hole_d/hyp)
         ang_crit = ang_crit * 180/(np.pi) # convert rads to degrees
        
-        return ang_crit, hyp
+        return ang_crit
 
 
     def trans_angle(theta, nAir, nWat):
@@ -116,7 +116,9 @@ class specFuncs:
         SZA = 90-theta
 
         def DoesBeamHitWall(theta, hole_d, hole_water_d, hole_w):
-
+            """
+            Tests whether the beam hits the wall ABOVE the water surface
+            """
             ang = theta
             ang_rad = ang*(np.pi/180) # radians
 
@@ -135,6 +137,7 @@ class specFuncs:
 
 
         def ReflectionsInAir(hole_w, theta, SurfToWat, BeamHitsWall = None):
+            
             """
             calculates number of times beam reflects from walls before hitting water surface and provides 
             height above surface of final beam strike on wall before beam hits water
@@ -214,8 +217,9 @@ class specFuncs:
                     beam_d_wat = 0
 
                     reflect = False
-
+                    
                 else:
+
                     reflect = True
                     # depth gained by first subsurface beam
                     beam_d_wat = math.tan(t_theta*(np.pi/180)) * SurfStrike_d
@@ -227,21 +231,24 @@ class specFuncs:
                         depth_gained = hole_w / math.tan(ang_top * np.pi/180) 
 
                         beam_d_wat += depth_gained
-                        
-                        n_wat_reflections += 1
 
                         if beam_d_wat >= hole_water_d:
                             
                             reflect = False
 
+                        n_wat_reflections += 1
+                               
+            
             else:
 
                 reflect = True
+
                 if base <= hole_w - SurfStrike_d:
 
                     n_wat_reflections = 0
                     beam_d_wat = 0
                     reflect = False
+
 
                 else:
 
@@ -252,17 +259,16 @@ class specFuncs:
                         ang_top = 90-t_theta
                         depth_gained = hole_w / math.tan(ang_top * (np.pi/180)) 
                         beam_d_wat += depth_gained
-                        n_wat_reflections += 1
+                       
 
                         if beam_d_wat >= hole_water_d:
                             
                             reflect = False
 
+                        n_wat_reflections += 1
+            
 
-            floor_strike_d = 0
-
-
-            return n_wat_reflections, beam_d_wat, floor_strike_d
+            return n_wat_reflections, beam_d_wat
 
 
        ############################################################
@@ -274,7 +280,7 @@ class specFuncs:
 
         SurfStrike_d, REVERSE = UpdateSurfStrike_d(n_air_reflections, theta, SurfStrike_d, residual_d)
 
-        n_wat_reflections, beam_d_wat, floor_strike_d = ReflectionsInWater(hole_water_d, SZA, theta, t_theta, hole_w, SurfStrike_d, nAir, nWat, REVERSE)
+        n_wat_reflections, beam_d_wat = ReflectionsInWater(hole_water_d, SZA, theta, t_theta, hole_w, SurfStrike_d, nAir, nWat, REVERSE)
 
         total_reflections = n_air_reflections + n_wat_reflections
 
@@ -291,7 +297,7 @@ class specFuncs:
             print("the total number of subsurface reflections is {}".format(n_wat_reflections))
 
                     
-        return n_air_reflections, n_wat_reflections, total_reflections, floor_strike_d, SurfStrike_d, beamHitsWall
+        return n_air_reflections, n_wat_reflections, total_reflections, SurfStrike_d, beamHitsWall
 
 
 
