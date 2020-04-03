@@ -51,6 +51,7 @@ class specFuncs:
         0 = no direct illumination.
         
         """
+        
         import math
         import numpy as np
         

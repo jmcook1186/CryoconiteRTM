@@ -91,9 +91,9 @@ def check_multiple_reflections(nAir,nWat):
     floor_strike_d_list = []
     t_theta_list = []
     
-    for theta in np.arange(1,90,2):
+    for theta in np.arange(1,90,1):
 
-        hole_d = 30
+        hole_d = 20
         hole_w = 30
         hole_water_d = 10
         point = hole_w/2
@@ -102,19 +102,19 @@ def check_multiple_reflections(nAir,nWat):
 
         print("\nelevation angle = ",theta," transmitted angle (400 nm) =  ", t_theta[20])
 
-        n_air_reflections, n_wat_reflections, total_reflections, floor_strike_d = specFuncs.test_multiple_reflections(theta, t_theta[0], 
-        
-        hole_d, hole_w, hole_water_d, nAir, nWat, verbose=True)
+        n_air_reflections, n_wat_reflections, total_reflections, SurfStrike_d, \
+        beamHitsWall = specFuncs.test_multiple_reflections(
+            theta, t_theta[0], hole_d, hole_w, hole_water_d, nAir, nWat, verbose = False)
 
         n_air_reflections_list.append(n_air_reflections)
         n_wat_reflections_list.append(n_wat_reflections)
         total_reflections_list.append(total_reflections)
-        floor_strike_d_list.append(floor_strike_d)
         
-    plt.plot(n_air_reflections_list,label='# air refls')
-    plt.plot(n_wat_reflections_list, label='# wat refls')
+    plt.plot(np.arange(1,90,1), n_air_reflections_list,label='# air refls')
+    plt.plot(np.arange(1,90,1), n_wat_reflections_list, label='# wat refls')
+    plt.xlabel('Solar Elevation Angle (degrees)')
+    plt.ylabel('Number of reflections')
     #plt.plot(total_reflections_list, label='# total refls')
-    #plt.plot(floor_strike_d_list,label='floor strike d')
     plt.legend(loc='best')
 
     plt.show()
@@ -123,9 +123,8 @@ def check_multiple_reflections(nAir,nWat):
 
 
 
-
 # WHICH FUNCTIONS TO TEST?
-#check_fresnel(nAir,nWat,kAir,kWat,WL,plot_figs=True)
+check_fresnel(nAir,nWat,kAir,kWat,WL,plot_figs=True)
 check_multiple_reflections(nAir,nWat)
-#check_trans_angle(nAir, nWat)
+check_trans_angle(nAir, nWat)
 

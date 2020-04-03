@@ -25,6 +25,7 @@ class ControlFuncs:
     def CalculateFluxes(hole_d, hole_w, hole_water_d, point, cryoconite_albedo, WL, Mie, GeometricOptics, SZA, incoming, 
     rho_snw, rds_snw, side_length, depth):
 
+
         import numpy as np
         import math
         from snicar8d_mie import snicar8d_mie
@@ -34,7 +35,6 @@ class ControlFuncs:
         #############################################
         # HARD CODED AND DERIVED VARIABLE DEFINITIONS
         #############################################
-
 
         dz = [hole_d/100] # thickness of each vertical layer (unit = m)
         nbr_lyr = len(dz)  # number of snow layers
@@ -64,7 +64,6 @@ class ControlFuncs:
         upbeam = []
         incoming_new = np.copy(incoming)
 
-
         ####################################
         # CALCULATE TRANSPORT OF DIRECT BEAM
         ####################################
@@ -73,6 +72,7 @@ class ControlFuncs:
 
         # if there is no water, no refraction of incoming beam occurs so t_theta = theta
         if hole_water_d == 0:
+
             t_theta = theta
             t_theta_mean = theta
 
@@ -241,9 +241,11 @@ class ControlFuncs:
         ########################################
 
         dir_energy_absorbed_by_cryoconite = dir_energy_at_hole_floor * (1-cryoconite_albedo)
+        diffuse_energy_at_hole_floor = F_btm_net
 
-        diffuse_energy_absorbed_by_cryoconite = F_btm_net * (1-cryoconite_albedo)
+        diffuse_energy_absorbed_by_cryoconite = diffuse_energy_at_hole_floor * (1-cryoconite_albedo)
 
         total_incoming_energy = np.sum(incoming)
         
-        return dir_energy_absorbed_by_cryoconite, diffuse_energy_absorbed_by_cryoconite, total_incoming_energy
+        return dir_energy_absorbed_by_cryoconite, diffuse_energy_absorbed_by_cryoconite, total_incoming_energy,\
+        dir_energy_at_hole_floor, diffuse_energy_at_hole_floor
