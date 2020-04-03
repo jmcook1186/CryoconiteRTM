@@ -22,8 +22,18 @@ The model is run from "driver.py" from the terminal. In-script annpotations show
 ## Theory
 This model calculates the energy absorbed by layers of cryoconite at the base of cryoconote holes of known geometry and under known illumination conditions. This is achieved in two stages: 1) calculation of illumination by a collimated beam assumed to arrive from a point source at zenith angle SZA. This can be direct illumination or illumination after one or more reflections from the hole walls. 2) Energy arriving from all directions due to multiple scattering in the ice around the cryoconite hole. This is calculated by calculating using a two-stream model based on SNICAR. The energy at hole depth d in a simulated homogenous layer of ice is added to the collimated beam flux. The total energy (collimated beam + diffuse) is multiplied by the cryoconite albedo to calculate the energy absorbed by the cryoconite sediment at the hole floor.
 
+The hole is considered as a 2D idealised parallel and vertical-sided and flat floored shape with a continuous and uniform layer of cryoconite covering the floor, overlain by a column of water. The direct beam might illuminate the hole floor directly. To determine whether the floor is directly illuminated, first there is a test to determine whether the beam hits the water surface or the hole wall. If the beam does not hit the water surface, it may hit the hole wall above the water surface. If the beam hits the wall, the beam is considered to create a right triangle with angle theta and base of length equal to the hole width. The depth gained by the beam when it reflects is the vertical side of that triangle that can be solved for using basic trigonometry. If that depth is less than the dostance between ice surface and water surface, another reflection occurs. This can be repeated until the beam reaches the water surface. Another trigonometric calculation provides the distance from the sunwards wall that the beam hits the water surface. Losses occur at each reflection between air and ice and at the entry to the water, according to Fresnel reflection. When the beam enters the water it is refracted, so the incoming angle is adjusted to a new transmitted angle.
 
-## Testing
+If the beam does hit the water surface without hitting the hole wall, there is a loss due to fresnel reflection, then the beam is refracted according to Snell's law. 
+
+Once the beam enters the water, it has a new angle of incidence due to refraction, and a known position on the water surface that the beam entered the water column. There is then a chance that the beam illuminates the hole floor without reflecting from any other surfaces. In this case, the only other loss is due to absorption in the water column, according to the path length and the absorption coefficient of water. However, the beam may hit a wall before hitting the floor. In this case, there is an additional Fresnel loss each time the beam reflects from the hole wall.
+
+Eventually, after n reflections, the beam strikes the hole floor. The amount of energy absorbed by cryoconite is the remaining energy after the incoming energy at the surface has been reduced at each reflective loss and by absorption in the water (taking into account the path length after multiple reflections), multiplied by 1 - albedo of the cryoconite.
+
+There is also energy arriving from the surrounding ice, since light incident around the cryoconite hole that does not enter the hole scatteres multiple times and penetrates the ice to some depth, likely coming into contact with the cryoconite layer where is has a strng chance of being absorbed. This is accounted for using a to-stream radiative transfer calculation where the ice is assumed to be a homogenous layer with depth equal to the hole depth. The ice configuration is user-defined, by default there are no surface impurities but his can easily be updated if necessary. The incoming irradiance is identical to that used for the collimated beam. The actinic flux at depth = hole_depth is then added to the energy field and actinic flux * 1-cryoconite albedo is added to the absorbed energy.
+
+
+# Testing
 Two types of testing have been undertaken - a) unit testing, where the target data for specific functions are gathered from known theory, and b) validation testing, where the model predictions are compared against empirical field measurements. 
 
 ## Unit testing
@@ -38,7 +48,7 @@ The key functions tested are the Fresnel reflection calculations, the Snell's La
 
 ![TransAngle](/Assets/TransAngleTests.jpg)
 
-### Multipe Reflection Function
+### Multiple Reflection Function
 
 ![MultipleReflectionTests](/Assets/MultipleReflectionsTests.jpg)
 
