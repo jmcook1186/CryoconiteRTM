@@ -22,6 +22,21 @@ The model is run from "driver.py" from the terminal. In-script annpotations show
 ## Theory
 This model calculates the energy absorbed by layers of cryoconite at the base of cryoconote holes of known geometry and under known illumination conditions. This is achieved in two stages: 1) calculation of illumination by a collimated beam assumed to arrive from a point source at zenith angle SZA. This can be direct illumination or illumination after one or more reflections from the hole walls. 2) Energy arriving from all directions due to multiple scattering in the ice around the cryoconite hole. This is calculated by calculating using a two-stream model based on SNICAR. The energy at hole depth d in a simulated homogenous layer of ice is added to the collimated beam flux. The total energy (collimated beam + diffuse) is multiplied by the cryoconite albedo to calculate the energy absorbed by the cryoconite sediment at the hole floor.
 
+
+
+Schematic of simple no-reflection case 
+
+![HoleGeom1](/Assets/cryoconite_geometry1.jpg)
+
+
+
+Schematic of more comples multiple reflection case 
+
+![HoleGeom2](/Assets/cryoconite_geometry2.jpg)
+
+
+
+
 The hole is considered as a 2D idealised parallel and vertical-sided and flat floored shape with a continuous and uniform layer of cryoconite covering the floor, overlain by a column of water. The direct beam might illuminate the hole floor directly. To determine whether the floor is directly illuminated, first there is a test to determine whether the beam hits the water surface or the hole wall. If the beam does not hit the water surface, it may hit the hole wall above the water surface. If the beam hits the wall, the beam is considered to create a right triangle with angle theta and base of length equal to the hole width. The depth gained by the beam when it reflects is the vertical side of that triangle that can be solved for using basic trigonometry. If that depth is less than the dostance between ice surface and water surface, another reflection occurs. This can be repeated until the beam reaches the water surface. Another trigonometric calculation provides the distance from the sunwards wall that the beam hits the water surface. Losses occur at each reflection between air and ice and at the entry to the water, according to Fresnel reflection. When the beam enters the water it is refracted, so the incoming angle is adjusted to a new transmitted angle.
 
 If the beam does hit the water surface without hitting the hole wall, there is a loss due to fresnel reflection, then the beam is refracted according to Snell's law. 
