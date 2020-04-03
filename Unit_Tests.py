@@ -42,6 +42,7 @@ def check_fresnel(nAir,nWat,kAir,kWat,WL,plot_figs=True):
     
 
     for i in range(FresnelTargetData.shape[0]):
+
         for j in range(FresnelTargetData.shape[1]):
             
             if test[i,j] - FresnelTargetData[i,j] > 0.00001:
@@ -52,6 +53,7 @@ def check_fresnel(nAir,nWat,kAir,kWat,WL,plot_figs=True):
     
     if plot_figs:
         plt.plot(test)
+        plt.title('Fresnel reflection: each curve is a different wavelength')
         plt.ylabel('Fresnel Rf (proportion of incident reflected)')
         plt.xlabel('Solar zenith angle (0 = overhead, 90 = horizon')
         plt.show()
@@ -66,16 +68,17 @@ def check_trans_angle(nAir, nWat):
     outList = []
     thetaList = []
 
-    for theta in np.arange(0,90,1):
+    for theta in np.arange(0,90,3):
 
         t_theta = specFuncs.trans_angle(theta,nAir,nWat)
     
         plt.plot(WL,t_theta, label='Theta = {}'.format(theta))
     
+    plt.title('Transmitted angle (each curve is a different incoming SZA)')
     plt.ylabel('Transmitted angle (elevation from horizontal)')
     plt.xlim(0.3,5)
     plt.xlabel('Wavelength (microns)')
-    plt.legend(bbox_to_anchor=(1, 1), loc='upper left', ncol=1)
+    plt.legend(bbox_to_anchor=(1, 1), loc='upper left', ncol=2)
     plt.tight_layout()
     plt.show()
 
@@ -93,9 +96,9 @@ def check_multiple_reflections(nAir,nWat):
     
     for theta in np.arange(1,90,1):
 
-        hole_d = 20
+        hole_d = 60
         hole_w = 30
-        hole_water_d = 10
+        hole_water_d = 40
         point = hole_w/2
 
         t_theta = specFuncs.trans_angle(theta,nAir,nWat)
@@ -112,6 +115,7 @@ def check_multiple_reflections(nAir,nWat):
         
     plt.plot(np.arange(1,90,1), n_air_reflections_list,label='# air refls')
     plt.plot(np.arange(1,90,1), n_wat_reflections_list, label='# wat refls')
+    plt.title('Multiple reflections for hole depth 60 cm, hole width 30cm, hole water depth 40 cm')
     plt.xlabel('Solar Elevation Angle (degrees)')
     plt.ylabel('Number of reflections')
     #plt.plot(total_reflections_list, label='# total refls')
@@ -124,7 +128,7 @@ def check_multiple_reflections(nAir,nWat):
 
 
 # WHICH FUNCTIONS TO TEST?
-check_fresnel(nAir,nWat,kAir,kWat,WL,plot_figs=True)
-check_multiple_reflections(nAir,nWat)
+# check_fresnel(nAir,nWat,kAir,kWat,WL,plot_figs=True)
+# check_multiple_reflections(nAir,nWat)
 check_trans_angle(nAir, nWat)
 
