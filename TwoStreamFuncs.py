@@ -42,25 +42,24 @@ class TwoStreamFuncs:
         if DIRECT:
             if incoming_i == 0:
                 Incoming_file = xr.open_dataset(str(dir_fsds + "swnb_480bnd_mlw_clr_"+zen+".nc")) 
-                print("atmospheric profile = mid-lat winter")
+                
             elif incoming_i == 1:
                 Incoming_file = xr.open_dataset(str(dir_fsds + "swnb_480bnd_mls_clr_"+zen+".nc"))
-                print("atmospheric profile = mid-lat summer")
+                
             elif incoming_i == 2:
                 Incoming_file = xr.open_dataset(str(dir_fsds + "swnb_480bnd_saw_clr_"+zen+".nc"))
-                print("atmospheric profile = sub-Arctic winter")
+                
             elif incoming_i == 3:
                 Incoming_file = xr.open_dataset(str(dir_fsds + "swnb_480bnd_sas_clr_"+zen+".nc"))
-                print("atmospheric profile = sub-Arctic summer")
+                
             elif incoming_i == 4:
                 Incoming_file = xr.open_dataset(str(dir_fsds + "swnb_480bnd_smm_clr_"+zen+".nc"))
-                print("atmospheric profile = Summit Station")
+                
             elif incoming_i == 5:
                 Incoming_file = xr.open_dataset(str(dir_fsds + "swnb_480bnd_hmn_clr_"+zen+".nc"))
-                print("atmospheric profile = High Mountain")  
+                
             elif incoming_i == 6:
                 Incoming_file = xr.open_dataset(str(dir_fsds + "swnb_480bnd_toa_clr.nc"))
-                print("atmospheric profile = top-of-atmosphere")
 
             else:
                 raise ValueError ("Invalid choice of atmospheric profile")
@@ -114,7 +113,7 @@ class TwoStreamFuncs:
         rf_ice = 2        # define source of ice refractive index data. 0 = Warren 1984, 1 = Warren 2008, 2 = Picard 2016
         incoming_i = 4
         nbr_lyr = len(params.dz)  # number of snow layers
-        R_sfc = 0.1 # reflectance of underlying surface - set across all wavelengths
+        R_sfc = 0.15 # reflectance of underlying surface - set across all wavelengths
         rwater = [0]*len(params.dz) # if  using Mie calculations, add radius of optional liquid water coating
         grain_shp =[0]*len(params.dz) # grain shape(He et al. 2016, 2017)
         shp_fctr = [0]*len(params.dz) # shape factor (ratio of aspherical grain radii to that of equal-volume sphere)

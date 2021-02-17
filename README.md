@@ -14,6 +14,12 @@ This software runs best in the provided environment BioSNICAR_py. This can be cr
 conda create -f BioSNICAR_py.yaml
 
 ```
+
+The user must also have the repository BioSNICAR_GO_PY downloaded onto their
+computer. There are currently some hard-coded paths to that repository in this
+code that I will try to remove later in the development.
+
+
 ## Running the model
 The model is run from "driver.py" from the terminal. In-script annpotations show clearly the user-defined variables whose values can be changed. I have moved all derived and hard-coded variable setting to external scripts. Simply set the hole geometry and illumination conditions as required and run the script. The output is a plot showing the total incoming irradiance and the spectral energy absorbed by the cryoconite layer at the hole floor.
 

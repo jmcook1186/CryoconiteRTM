@@ -22,6 +22,25 @@ class ControlFuncs:
 
         return
 
+    def Validate_Input_Data(hole_d, hole_w, hole_water_d, solzen):
+
+        if hole_water_d > hole_d:
+            raise ValueError("ERROR: The water is deeper than the cryoconite hole")
+        else:
+            pass
+
+        if (solzen ==0) or (solzen > 85):
+            raise ValueError("ERROR: Please adjust solar zenith to be 1 - 85 degrees")
+        else:
+            pass
+
+        if (hole_w == 0) or (hole_d ==0):
+            raise ValueError("ERROR: Either the hole width or depth is set to zero")
+        else:
+            pass
+
+        return 
+
     def CalculateFluxes(hole_d, hole_w, hole_water_d, point, cryoconite_albedo, WL, params):
 
         import numpy as np
