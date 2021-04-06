@@ -41,6 +41,7 @@ class ControlFuncs:
 
         return 
 
+
     def CalculateFluxes(hole_d, hole_w, hole_water_d, point, cryoconite_albedo, WL, params):
 
         import numpy as np
@@ -53,7 +54,7 @@ class ControlFuncs:
         #############################################
 
         dz = [hole_d/100] # thickness of each vertical layer (unit = m)
-        R_sfc = np.mean(cryoconite_albedo) # reflectance of undrlying surface - set across all wavelengths
+        R_sfc = np.mean(cryoconite_albedo) # reflectance of underlying surface - set across all wavelengths
         theta = 90-params.solzen # calculated from SZA
         nAir = np.ones(shape=(470)) # define n and k for air (array of ones)
         kAir = np.zeros(shape=(470))+0.00000001
@@ -175,6 +176,22 @@ class ControlFuncs:
         diffuse_energy_absorbed_by_cryoconite = diffuse_energy_at_hole_floor * (1-cryoconite_albedo)
 
         total_incoming_energy = np.sum(incoming)
+
+
+        # account for internal reflections
+
+        energy_escaping_internal_reflections = []
+        energy_lost_internal_reflections = []
+        
+        for i in range(len(WL)): 
+            escaped, loss, cryoconite_abs = specFuncs.internal_reflection(hole_d, cryoconite_albedo, WL[i], nAir[i], kAir[i], nWat[i], kWat[i], 10,\
+                dir_energy_at_hole_floor[i], diffuse_energy_at_hole_floor[i])
+
+            energy_escaping_internal_reflections.append(escaped)
+            energy_lost_internal_reflections.append(loss)
+
+
+        diffuse_energy_absorbed_by_cryoconite = diffuse_energy_absorbed_by_cryoconite + cryoconite_abs
         
         return dir_energy_absorbed_by_cryoconite, diffuse_energy_absorbed_by_cryoconite, total_incoming_energy,\
         dir_energy_at_hole_floor, diffuse_energy_at_hole_floor

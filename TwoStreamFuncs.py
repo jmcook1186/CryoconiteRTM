@@ -98,7 +98,7 @@ class TwoStreamFuncs:
 
         from SNICAR_feeder import snicar_feeder
 
-    # set dir_base to the location of the BioSNICAR_GO_PY folder
+    	# set dir_base to the location of the BioSNICAR_GO_PY folder
 
         dir_base = '/home/joe/Code/BioSNICAR_GO_PY/'
         savepath = dir_base # base path for saving figures

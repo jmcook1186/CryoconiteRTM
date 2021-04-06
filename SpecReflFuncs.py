@@ -287,6 +287,7 @@ class specFuncs:
 
 
         if verbose:
+
             print("during each reflection the beam descends by {} cm".format(np.round(beam_d_air,2)))
             print("there are {} reflections above the water surface".format(n_air_reflections))
             print("the beam reaches the water surface after {} reflections".format(n_air_reflections))
@@ -404,7 +405,6 @@ class specFuncs:
         return dir_energy_at_hole_floor
 
 
-
     def fresnel(n1, n2, k1, k2, theta):
         
         """
@@ -433,3 +433,49 @@ class specFuncs:
 
         return Rf
 
+
+    def internal_reflection(hole_d, cryoconite_albedo, WL, nAir, kAir, nWat, kWat, n_internal_reflections,\
+        dir_energy_at_hole_floor, diffuse_energy_at_hole_floor):
+
+        import numpy as np
+
+        energy_arriving_at_floor = dir_energy_at_hole_floor + diffuse_energy_at_hole_floor
+
+        path_length = hole_d
+
+        Rf = []
+
+        for theta in np.arange(10,65,1):
+            
+            Rf.append(specFuncs.fresnel(nWat, nAir, kWat, kAir, theta))
+        
+        diffuse_Rf = np.mean(Rf)
+
+        upwelling_energy = energy_arriving_at_floor * (1-cryoconite_albedo)
+        
+        loss = 0
+        cryoconite_abs = 0
+
+        abs_coeff = 4*np.pi*kWat / WL
+
+        norm_abs_coeff = abs_coeff * (path_length/100) # multiply abs coeff (/m) by path length in m
+            
+
+        for n in np.arange(0,n_internal_reflections,1):
+
+            loss_upwards = upwelling_energy*norm_abs_coeff
+            loss_at_boundary = upwelling_energy - loss_upwards * diffuse_Rf
+            down_flux = upwelling_energy - loss_upwards - loss_at_boundary
+            loss_downwards = (down_flux * norm_abs_coeff)
+            loss_at_cryoconite = (down_flux-loss_downwards) * (1-cryoconite_albedo)
+
+            total_iteration_loss = loss_upwards + loss_at_boundary + loss_downwards + loss_at_cryoconite
+
+            loss += total_iteration_loss
+            cryoconite_abs += loss_at_cryoconite
+
+            upwelling_energy = upwelling_energy - total_iteration_loss
+
+        escaped = upwelling_energy - loss
+
+        return escaped, loss, cryoconite_abs

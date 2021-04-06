@@ -5,7 +5,13 @@ This is where all user-defined vairables are set and output values are plotted
 
 AUTHOR: JOSEPH COOK, April 2020
 www.tothepoles.co.uk
-ww.github.com/jmcook1186
+www.github.com/jmcook1186
+
+TODOs
+
+1) calculate albedo
+2) add infinite series for reflections off underside of water surface?
+3) add functions for 2D surface ( % coverage by holes, dimensions, total albedo)
 
 """
 
@@ -20,9 +26,9 @@ from TwoStreamFuncs import TwoStreamFuncs
 # 1 DEFINE HOLE GEOMETRY
 ########################
 
-hole_d = 10
-hole_w = 30
-hole_water_d = 10
+hole_d = 20
+hole_w = 50
+hole_water_d = 20
 hole_ar = hole_d/hole_w
 point = hole_w/2 # horizontal distance from LH wall to desired location on hole floor
 cryoconite_albedo = np.ones(470)*0.2 #constant albedo across wavelength for now
@@ -32,8 +38,8 @@ WL = np.arange(0.3,5,0.01)
 ## 2. CONFIGURE RTM 
 ####################
 
-solzen = 45
-density = [900]
+solzen = 25
+density = [700]
 grain_rds = [500]
 layer_type = [1]
 dz = [hole_d/100] # cm to m
@@ -70,9 +76,10 @@ plt.xlim(0.3,5),plt.xlabel('Wavelength (microns)')
 plt.ylabel('Energy (W/m2)')
 plt.legend(loc='best')
 
-plt.show()
+plt.savefig('/home/joe/Code/CryoconiteRTM/Out.jpg')
 
-print("BROADBAND ENERGY ABSORBED =", BB_output)
-print("TOTAL ENERGY in WM2 = ", np.sum(incoming))
-print("WIDTH/DEPTH RATIO = ", hole_w/hole_d)
-print("FLOOR/SURFACE I* RATIO = ", BB_output/np.sum(incoming))
+
+print("BROADBAND ENERGY ABSORBED =", np.round(BB_output,3))
+print("TOTAL INCOMING ENERGY in WM2 = ", np.round(np.sum(incoming),3))
+print("WIDTH/DEPTH RATIO = ", np.round(hole_w/hole_d,3))
+print("FLOOR/SURFACE I* RATIO = ", np.round(BB_output/np.sum(incoming),3))
