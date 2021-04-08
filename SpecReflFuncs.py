@@ -293,7 +293,6 @@ class specFuncs:
             print("the beam reaches the water surface after {} reflections".format(n_air_reflections))
             print("the beam hits the water {}cm from the nearest wall".format(np.round(SurfStrike_d,2)))
             print("hole width",hole_w)
-            print("SurfStrike_d = ",SurfStrike_d)
             print("the beam hits the vertical wall {}cm below the surface".format(np.round(beam_d_wat,2)))
             print("in each subsurface reflection the beam descends by {} cm".format(np.round(beam_d_wat,2)))
             print("the total number of subsurface reflections is {}".format(n_wat_reflections))
@@ -434,48 +433,84 @@ class specFuncs:
         return Rf
 
 
-    def internal_reflection(hole_d, cryoconite_albedo, WL, nAir, kAir, nWat, kWat, n_internal_reflections,\
+    def internal_reflection(hole_water_d, cryoconite_albedo, WL, nAir, kAir, nWat, kWat, tolerance,\
         dir_energy_at_hole_floor, diffuse_energy_at_hole_floor):
 
-        import numpy as np
+        """
+        calculates losses due to upwelling flux being reflected back down into the water column to then
+        be partially absorbed by the cyrocontie layer, then repeat n times with diminishing flux
 
+        Calculates total escaped energy after n intenal reflections too 
+        
+        """
+    
+        import numpy as np
+             
+
+        # define energy arriving at hole floor at first iteration
         energy_arriving_at_floor = dir_energy_at_hole_floor + diffuse_energy_at_hole_floor
 
-        path_length = hole_d
+        # since we assume the energy is diffuse after interating with cryoconite layer
+        # we effectively start thinking of the ystem in a two-stream ay rather
+        # than tracing rays. Therefore, path length is the hole water depth.
+        path_length = hole_water_d # in cm
 
-        Rf = []
+        Rf = [] # empty list for R values at range of angles
 
-        for theta in np.arange(10,65,1):
-            
-            Rf.append(specFuncs.fresnel(nWat, nAir, kWat, kAir, theta))
+
+        # calculate reflected portion of upwelling energy using Fresnel equation
+        # loop through angles then average for diffuse flux
+        # suppress /0 warning for this calculation (this is expected, and later corrected) 
+        np.seterr(divide='ignore', invalid='ignore')
+
+        for theta in np.arange(1,89,1): 
+            theta_rad = np.radians(theta)
+            Rf.append(((nWat * np.sqrt( 1- (((nWat/nAir)*np.sin(theta_rad))**2)) - nAir*np.cos(theta_rad))/ (nWat * np.sqrt( 1- (((nWat/nAir)*np.sin(theta_rad))**2)) * nAir*np.cos(theta_rad)))**2)
         
-        diffuse_Rf = np.mean(Rf)
+        Rf = np.array(Rf)
+        Rf[np.isnan(Rf)] = 0.9999999999   # nans are angles > Brewster's angle == total internal reflection
+        Rf[Rf>1] = 0.99999   # correct for any invalid values
+        diffuse_Rf = np.mean(Rf) # diffuse Fresnel reflection
+        
+        # turn warnings back on
+        np.seterr(divide='warn', invalid='warn')
 
+        # energy upwelling after absorption by cryoconite layer
         upwelling_energy = energy_arriving_at_floor * (1-cryoconite_albedo)
         
+        # initiate cumulative vars for total loss and total absorbed by cryoconite
         loss = 0
         cryoconite_abs = 0
 
+        # calculate absorption coefficient of water column
         abs_coeff = 4*np.pi*kWat / WL
-
         norm_abs_coeff = abs_coeff * (path_length/100) # multiply abs coeff (/m) by path length in m
-            
+        
+        # begin loop, one iteration for one internal reflection
+        # i.e. each n tracks light from immediately above cryoconite layer t o water surface
+        # then back down to the cryoconite layer    
+        while np.sum(upwelling_energy) > tolerance:
 
-        for n in np.arange(0,n_internal_reflections,1):
+            loss_upwards = upwelling_energy*norm_abs_coeff # loss as beam passes upwards through water column
+            loss_at_boundary = (upwelling_energy - loss_upwards) * (1-diffuse_Rf) #fresnel loss at boundary
+            down_flux = upwelling_energy - loss_upwards - loss_at_boundary 
+            loss_downwards = down_flux * norm_abs_coeff # loss as beam passes downwards through water column
+            loss_at_cryoconite = (down_flux-loss_downwards) * (1-cryoconite_albedo) # loss due to abs by cryoconite
 
-            loss_upwards = upwelling_energy*norm_abs_coeff
-            loss_at_boundary = upwelling_energy - loss_upwards * diffuse_Rf
-            down_flux = upwelling_energy - loss_upwards - loss_at_boundary
-            loss_downwards = (down_flux * norm_abs_coeff)
-            loss_at_cryoconite = (down_flux-loss_downwards) * (1-cryoconite_albedo)
-
+            # total losses in iteration
             total_iteration_loss = loss_upwards + loss_at_boundary + loss_downwards + loss_at_cryoconite
 
+            # update cumulative loss and abs at cryoconite 
             loss += total_iteration_loss
             cryoconite_abs += loss_at_cryoconite
 
+            # update upwelling flux after one complete iteration
             upwelling_energy = upwelling_energy - total_iteration_loss
 
-        escaped = upwelling_energy - loss
+        
+        # total energy escaping to atmosphere (i.e. contributing to surface albedo) 
+        # is original upwelling flux minus total losses after n iterations
+        escaped = energy_arriving_at_floor - loss
+
 
         return escaped, loss, cryoconite_abs

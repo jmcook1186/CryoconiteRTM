@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 from SpecReflFuncs import specFuncs
 
 
-
 # SET UP SOME CONSTANTS NEEDED TO RUN FUNCS
 WL = np.arange(0.3,5,0.01)
 
@@ -26,6 +25,11 @@ kIce = np.genfromtxt ('/home/joe/Code/CryoconiteRTM/Data/ice_k.csv', delimiter="
 #run function and compare against benchmark data
 
 def check_fresnel(nAir,nWat,kAir,kWat,WL,plot_figs=True):
+
+    """
+    Checks the Fresnel reflection calculations aainst benchmark data
+
+    """
 
     FresnelTargetData = np.genfromtxt('/home/joe/Code/CryoconiteRTM/TestData/FresnelTargetData.csv')
     test = np.zeros(shape=(FresnelTargetData.shape))
@@ -63,6 +67,12 @@ def check_fresnel(nAir,nWat,kAir,kWat,WL,plot_figs=True):
 
 
 def check_trans_angle(nAir, nWat):
+
+    """
+
+    Checks that the transmitted angle s correctly by plotting for manual verification
+
+    """
     
     WL = np.arange(0.3,5,0.01)
     outList = []
@@ -86,7 +96,11 @@ def check_trans_angle(nAir, nWat):
 
 
 def check_multiple_reflections(nAir,nWat):
+    
+    """
+    checks multiple reflections between hole walls by plotting for manual verification
 
+    """
 
     n_air_reflections_list = []
     n_wat_reflections_list = []
@@ -126,9 +140,62 @@ def check_multiple_reflections(nAir,nWat):
     return
 
 
+def check_internal_reflections(nAir, kAir, nWat, kWat, WL):
+
+    """
+    checks internal reflections are correctly calculated using several assertions
+    
+    """
+
+    from SpecReflFuncs import specFuncs
+
+    hole_water_d = 20
+    cryoconite_albedo = 0.2
+    tolerance =1e-10
+    out = []
+
+    # reference values for dir & diff energy arriving at hole floor and diff energy absirbed by cconite
+    dir_energy_at_hole_floor = np.genfromtxt('/home/joe/Code/CryoconiteRTM/TestData/dir_energy_at_floor_unit_test.csv')
+    diffuse_energy_at_hole_floor = np.genfromtxt('/home/joe/Code/CryoconiteRTM/TestData/diffuse_energy_at_floor_unit_test.csv')
+    diffuse_energy_absorbed_by_cryoconite = np.genfromtxt('/home/joe/Code/CryoconiteRTM/TestData/diffuse_energy_absorbed_by_cryoconite.csv')
+
+    total_energy_arriving_at_floor = np.sum([diffuse_energy_at_hole_floor,dir_energy_at_hole_floor])
+
+    # test changing water depth
+    for hole_water_d in np.arange(1,20,1): # only go to 10 because that was used as hole-water_d to generate flux files
+
+        energy_escaping_internal_reflections = []
+        energy_lost_internal_reflections = []
+
+        for i in range(len(WL)): 
+
+            escaped, loss, cryoconite_abs = specFuncs.internal_reflection(hole_water_d, cryoconite_albedo, WL[i], nAir[i], kAir[i], nWat[i], kWat[i], tolerance,\
+                dir_energy_at_hole_floor[i], diffuse_energy_at_hole_floor[i])
+
+            energy_escaping_internal_reflections.append(escaped)
+            energy_lost_internal_reflections.append(loss)
+
+        energy_lost= np.sum(energy_escaping_internal_reflections) + np.sum(energy_lost_internal_reflections)
+    
+        # CHECK 1) all energy arriving at hole floor must either escape or be absorbed, if not, conservation of energy violation
+        assert abs(energy_lost - total_energy_arriving_at_floor) < tolerance, \
+            f"hole_water_d= {hole_water_d}, energy_lost ={energy_lost}: CONSERVATION OF ENERGY ERROR"
+
+    out.append(energy_lost)
+
+    # CHECK 2) as water height increases, energy loss should increase (by small amount) - i.e. out should be monononically increasing
+    assert all(x<y for x,y in zip(out, out[1:])), "increasing water depth leads to less energy loss"
+
+    # NOTE: these tests do not provide full coverage - to fully test requires
+    # iteration through hole depths, hole widths, solar zeniths...
+
+    # if we make it through the assertions we can print a success statement
+    print("*** Internal reflection unit tests passed successfully ***")
+
+    return
 
 # WHICH FUNCTIONS TO TEST?
 # check_fresnel(nAir,nWat,kAir,kWat,WL,plot_figs=True)
 # check_multiple_reflections(nAir,nWat)
-check_trans_angle(nAir, nWat)
-
+# check_trans_angle(nAir, nWat)
+check_internal_reflections(nAir,kAir,nWat,kWat,WL)

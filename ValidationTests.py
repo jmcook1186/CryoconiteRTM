@@ -1,21 +1,11 @@
-"""
-Driver script for validation testing CryoconiteRTM
 
-This validation is achieved by comparing predicted energy at the hole floor to field measurements
-made by lowering pyranometers into cryoconite holes in the field.
-
-AUTHOR: JOSEPH COOK, April 2020
-www.tothepoles.co.uk
-ww.github.com/jmcook1186
-
-"""
 
 import numpy as np
 import math
 import pandas as pd
 import matplotlib.pyplot as plt
 from ControlFuncs import ControlFuncs
-
+from TwoStreamFuncs import TwoStreamFuncs
 ########################
 # IMPORT FIELD DATA
 #######################
@@ -25,15 +15,13 @@ depths = FieldDF['HoleDepth(mm)']/10
 widths = FieldDF['HoleWidth(mm)']/10
 FieldRatios = FieldDF['Ratio']
 modelRatio = np.zeros(len(depths))
-sensor_height = 4 # sensor height in cm
-incoming = np.genfromtxt ('/home/joe/Code/CryoconiteRTM/Data/mlw_sfc_flx_frc_clr.txt', delimiter=",") # path to I* file
-
+sensor_height = 5 # sensor height in cm
 
 for i in range(len(depths)):
 
     hole_d = depths[i] - sensor_height
     hole_w = widths[i]
-    hole_water_d = np.round(hole_d * 0.5,0)
+    hole_water_d = np.round(hole_d * 0.7,0)
 
     #print("D: ", hole_d, "W: ", hole_w, "WatD: ", hole_water_d)
 
@@ -41,36 +29,36 @@ for i in range(len(depths)):
     point = hole_w/2 # horizontal distance from LH wall to desired location on hole floor
     cryoconite_albedo = np.ones(470)*0.2 #constant albedo across wavelength for now
     WL = np.arange(0.3,5,0.01)
-    Mie = False
-    GeometricOptics = True
-    SZA = 20 # SZA is calculated as degrees from the vertical (zenith) - i.e. 0 is illumination from directly overhead
 
     #############################################
     ## 3. SET PHYSICAL PROPERTIES OF THE ICE/SNOW
     #############################################
 
-    # These values are set to realistic values from the literature
-    # for SW Greenland
+    solzen = 15
+    density = [850]
+    grain_rds = [850]
+    layer_type = [1]
+    dz = [hole_d/100] # cm to m
+    algae = 0
+    incoming_i = 4
+    DIRECT = True
+    n_internal_reflections = 100
 
-    rho_snw = [600] # density of each layer (unit = kg m-3)
-    # if using Mie optical properties, set spherical grain radius
-    rds_snw = [2000]
-    # if using GeometricOptics, set grain side_length and depth
-    side_length = [4000] 
-    depth = [4000]
+    # create named tuple containing snicar input params
+    params = TwoStreamFuncs.generate_ice_physical_params(density,grain_rds,layer_type,dz,algae,solzen,incoming_i,DIRECT)
+    incoming = TwoStreamFuncs.generate_incoming_irradiance(params)
 
     #############################################################
     # END OF USER INPUT (i.e. leave all remaining code unchanged)
     #############################################################
 
     dir_energy_absorbed_by_cryoconite, diffuse_energy_absorbed_by_cryoconite, total_incoming_energy,\
-    dir_energy_at_hole_floor, diffuse_energy_at_hole_floor = ControlFuncs.CalculateFluxes(
-        hole_d, hole_w, hole_water_d, point, cryoconite_albedo, WL, Mie, GeometricOptics, SZA, incoming,\
-         rho_snw, rds_snw, side_length, depth)
+    dir_energy_at_hole_floor, diffuse_energy_at_hole_floor = ControlFuncs.CalculateFluxes(\
+        hole_d, hole_w, hole_water_d, point, cryoconite_albedo, WL, params, n_internal_reflections)
 
     total_energy_at_hole_floor = diffuse_energy_at_hole_floor + dir_energy_at_hole_floor
 
-    BB_output = np.sum(total_energy_at_hole_floor[:,0:40], axis=1)
+    BB_output = np.sum(total_energy_at_hole_floor)
 
     modelRatio[i] = BB_output/np.sum(incoming)
 
@@ -84,4 +72,4 @@ plt.scatter(range(len(error)),norm_error)
 plt.title("Absolute error: field measurements v simulations for hole floor irradiance")
 plt.ylim(0,0.5)
 plt.ylabel("Absolute error"), plt.xlabel("Measurement ID")
-plt.show()
+plt.savefig('/home/joe/Code/CryoconiteRTM/Assets/ValidationTests.jpg')

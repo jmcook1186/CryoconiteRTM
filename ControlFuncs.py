@@ -42,7 +42,7 @@ class ControlFuncs:
         return 
 
 
-    def CalculateFluxes(hole_d, hole_w, hole_water_d, point, cryoconite_albedo, WL, params):
+    def CalculateFluxes(hole_d, hole_w, hole_water_d, point, cryoconite_albedo, WL, params, n_internal_reflections):
 
         import numpy as np
         import math
@@ -56,7 +56,7 @@ class ControlFuncs:
         dz = [hole_d/100] # thickness of each vertical layer (unit = m)
         R_sfc = np.mean(cryoconite_albedo) # reflectance of underlying surface - set across all wavelengths
         theta = 90-params.solzen # calculated from SZA
-        nAir = np.ones(shape=(470)) # define n and k for air (array of ones)
+        nAir = np.ones(shape=(470))+0.0003 # define n and k for air (array of ones)
         kAir = np.zeros(shape=(470))+0.00000001
 
         # import spectral refractive index for water
@@ -166,9 +166,9 @@ class ControlFuncs:
         albedo = albedo[10:]
         F_btm_net = F_btm_net[10:]
         
-        ########################################
-        # CALCULATE AND DISPLAY OUTPUT VARIABLES
-        ########################################
+        ###############################################
+        # CALCULATE ENERGY ABSORBED AT CRYOCONITE LAYER
+        ###############################################
 
         dir_energy_absorbed_by_cryoconite = dir_energy_at_hole_floor * (1-cryoconite_albedo)
         diffuse_energy_at_hole_floor = F_btm_net
@@ -177,14 +177,16 @@ class ControlFuncs:
 
         total_incoming_energy = np.sum(incoming)
 
-
-        # account for internal reflections
+        ####################################
+        ## ACCOUNT FOR INTERNAL REFLECTIONS
+        ####################################
 
         energy_escaping_internal_reflections = []
         energy_lost_internal_reflections = []
         
+        # loop through wavelengths
         for i in range(len(WL)): 
-            escaped, loss, cryoconite_abs = specFuncs.internal_reflection(hole_d, cryoconite_albedo, WL[i], nAir[i], kAir[i], nWat[i], kWat[i], 10,\
+            escaped, loss, cryoconite_abs = specFuncs.internal_reflection(hole_water_d, cryoconite_albedo, WL[i], nAir[i], kAir[i], nWat[i], kWat[i], n_internal_reflections,\
                 dir_energy_at_hole_floor[i], diffuse_energy_at_hole_floor[i])
 
             energy_escaping_internal_reflections.append(escaped)
