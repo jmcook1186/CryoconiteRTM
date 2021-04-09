@@ -7,11 +7,6 @@ AUTHOR: JOSEPH COOK, April 2020
 www.tothepoles.co.uk
 www.github.com/jmcook1186
 
-TODOs
-
-1) calculate albedo
-2) add functions for 2D surface ( % coverage by holes, dimensions, total albedo)
-
 """
 
 import numpy as np

@@ -34,7 +34,7 @@ for i in range(len(depths)):
     ## 3. SET PHYSICAL PROPERTIES OF THE ICE/SNOW
     #############################################
 
-    solzen = 15
+    solzen = 25
     density = [850]
     grain_rds = [850]
     layer_type = [1]
@@ -58,7 +58,7 @@ for i in range(len(depths)):
 
     total_energy_at_hole_floor = diffuse_energy_at_hole_floor + dir_energy_at_hole_floor
 
-    BB_output = np.sum(total_energy_at_hole_floor)
+    BB_output = np.sum(total_energy_at_hole_floor[0:40])
 
     modelRatio[i] = BB_output/np.sum(incoming)
 
