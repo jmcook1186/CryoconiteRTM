@@ -274,8 +274,6 @@ def toon_solver(APRX_TYP, DELTA, tau, g, SSA, mu_not, nbr_lyr, nbr_wvl, R_sfc, w
     # = energy absorbed by underlying surface
     F_btm_net[0,:] = -F_net[nbr_lyr-1,:]
 
-    specular_reflection = False
-
     
     # Hemispheric wavelength-dependent albedo
     albedo = F_top_pls/ ((mu_not * np.pi * Fs)+ Fd)
@@ -350,4 +348,4 @@ def toon_solver(APRX_TYP, DELTA, tau, g, SSA, mu_not, nbr_lyr, nbr_wvl, R_sfc, w
 
 
 
-    return wvl, albedo, BBA, BBAVIS, BBANIR, abs_slr, abs_vis_tot, heat_rt, F_btm_et
+    return wvl, albedo, BBA, BBAVIS, BBANIR, abs_slr, abs_vis_tot, heat_rt, F_btm_net, F_top_pls

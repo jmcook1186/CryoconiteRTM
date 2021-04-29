@@ -195,7 +195,7 @@ class TwoStreamFuncs:
         #######################################
 
             
-        [wvl, albedo, BBA, BBAVIS, BBANIR, abs_slr, heat_rt, F_btm_net] =\
+        [wvl, albedo, BBA, BBAVIS, BBANIR, abs_slr, heat_rt, F_btm_net, F_top_pls] =\
         snicar_feeder(dir_base,\
         rf_ice, incoming_i, DIRECT, layer_type,\
         APRX_TYP, DELTA, solzen, TOON, ADD_DOUBLE, R_sfc, dz, rho_layers, grain_rds,\
@@ -213,4 +213,4 @@ class TwoStreamFuncs:
         FILE_GreenlandCentral2, FILE_GreenlandCentral3, FILE_GreenlandCentral4, FILE_GreenlandCentral5,\
         FILE_Cook_Greenland_dust_L, FILE_Cook_Greenland_dust_C, FILE_Cook_Greenland_dust_H, FILE_snw_alg, FILE_glacier_algae)
 
-        return albedo, BBA, F_btm_net
+        return albedo, BBA, F_btm_net, F_top_pls

@@ -22,7 +22,7 @@ class ControlFuncs:
 
         return
 
-    def Validate_Input_Data(hole_d, hole_w, hole_water_d, solzen):
+    def Validate_Input_Data(hole_d, hole_w, hole_water_d, solzen, total_cryoconite_area, study_area):
 
         if hole_water_d > hole_d:
             raise ValueError("ERROR: The water is deeper than the cryoconite hole")
@@ -36,6 +36,12 @@ class ControlFuncs:
 
         if (hole_w == 0) or (hole_d ==0):
             raise ValueError("ERROR: Either the hole width or depth is set to zero")
+        else:
+            pass
+
+        if total_cryoconite_area>study_area:
+            raise ValueError (f"Cryconite area = {np.sum(hole_areas*n_holes)} Total study area is less than total cryocontie area")
+        
         else:
             pass
 
@@ -53,7 +59,7 @@ class ControlFuncs:
         # HARD CODED AND DERIVED VARIABLE DEFINITIONS
         #############################################
 
-        dz = [hole_d/100] # thickness of each vertical layer (unit = m)
+        dz = [hole_d] # thickness of each vertical layer (unit = m)
         R_sfc = np.mean(cryoconite_albedo) # reflectance of underlying surface - set across all wavelengths
         theta = 90-params.solzen # calculated from SZA
         nAir = np.ones(shape=(470))+0.0003 # define n and k for air (array of ones)
@@ -96,7 +102,6 @@ class ControlFuncs:
         ang_crit = specFuncs.critical_angle(theta, hole_d, hole_w, point) # calculate critical angle
 
         # 2) For each wavelength, calculate losses at medium boundaries and apply for n interactions
-
         for i in range(len(WL)):
             
             # calculate losses expected at each type of transition (air/water, water/ice)
@@ -105,6 +110,9 @@ class ControlFuncs:
 
             result2 = specFuncs.fresnel(nWat[i],nIce[i],kWat[i],kIce[i],t_theta[i])
             R_wattoice.append(result2)
+
+            #calculate radiance reflected from water surface
+            reflected_from_water_surface = incoming*result1
 
             if t_theta[i] > ang_crit:
 
@@ -162,7 +170,7 @@ class ControlFuncs:
         ## CALCULATE DIFFUSE ENERGY FLUX REACHING HOLE FLOOR
         ####################################################
 
-        albedo, BBA, F_btm_net = TwoStreamFuncs.call_snicar(params)
+        albedo, BBA, F_btm_net, F_top_pls = TwoStreamFuncs.call_snicar(params)
         albedo = albedo[10:]
         F_btm_net = F_btm_net[10:]
         
@@ -177,6 +185,7 @@ class ControlFuncs:
 
         total_incoming_energy = np.sum(incoming)
 
+
         ####################################
         ## ACCOUNT FOR INTERNAL REFLECTIONS
         ####################################
@@ -185,15 +194,19 @@ class ControlFuncs:
         energy_lost_internal_reflections = []
         
         # loop through wavelengths
-        for i in range(len(WL)): 
-            escaped, loss, cryoconite_abs = specFuncs.internal_reflection(hole_water_d, cryoconite_albedo, WL[i], nAir[i], kAir[i], nWat[i], kWat[i], n_internal_reflections,\
+        for i in range(len(WL)):
+
+            escaped, loss, cryoconite_abs = specFuncs.internal_reflection(hole_water_d, cryoconite_albedo[i], WL[i], nAir[i], kAir[i], nWat[i], kWat[i], n_internal_reflections,\
                 dir_energy_at_hole_floor[i], diffuse_energy_at_hole_floor[i])
 
             energy_escaping_internal_reflections.append(escaped)
             energy_lost_internal_reflections.append(loss)
-
+        
+        energy_escaping_internal_reflections= np.array(energy_escaping_internal_reflections)
+        # import matplotlib.pyplot as plt
+        # plt.plot(energy_escaping_internal_reflections)
 
         diffuse_energy_absorbed_by_cryoconite = diffuse_energy_absorbed_by_cryoconite + cryoconite_abs
         
-        return dir_energy_absorbed_by_cryoconite, diffuse_energy_absorbed_by_cryoconite, total_incoming_energy,\
-        dir_energy_at_hole_floor, diffuse_energy_at_hole_floor
+        return energy_escaping_internal_reflections, dir_energy_absorbed_by_cryoconite, diffuse_energy_absorbed_by_cryoconite, total_incoming_energy,\
+        dir_energy_at_hole_floor, diffuse_energy_at_hole_floor, F_top_pls, reflected_from_water_surface

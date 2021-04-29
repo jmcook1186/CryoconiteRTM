@@ -103,6 +103,7 @@ class specFuncs:
         return  t_theta
 
 
+
     def test_multiple_reflections(theta, t_theta, hole_d, hole_w, hole_water_d, nAir, nWat, verbose = False):
         
         """
@@ -388,7 +389,7 @@ class specFuncs:
 
                 abs_coeff[i] = 4*np.pi*kWat[i] / WL[i]
 
-            norm_abs_coeff = abs_coeff * (PathLengthInWat/100) # multiply abs coeff (/m) by path length in m
+            norm_abs_coeff = abs_coeff * (PathLengthInWat) # multiply abs coeff (/m) by path length in m
             
             energyLoss = dir_energy_at_hole_floor * norm_abs_coeff
 
@@ -484,7 +485,7 @@ class specFuncs:
 
         # calculate absorption coefficient of water column
         abs_coeff = 4*np.pi*kWat / WL
-        norm_abs_coeff = abs_coeff * (path_length/100) # multiply abs coeff (/m) by path length in m
+        norm_abs_coeff = abs_coeff * (path_length) # multiply abs coeff (/m) by path length in m
         
         # begin loop, one iteration for one internal reflection
         # i.e. each n tracks light from immediately above cryoconite layer t o water surface
@@ -507,10 +508,8 @@ class specFuncs:
             # update upwelling flux after one complete iteration
             upwelling_energy = upwelling_energy - total_iteration_loss
 
-        
         # total energy escaping to atmosphere (i.e. contributing to surface albedo) 
         # is original upwelling flux minus total losses after n iterations
         escaped = energy_arriving_at_floor - loss
-
 
         return escaped, loss, cryoconite_abs

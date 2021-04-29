@@ -458,16 +458,16 @@ def snicar_feeder(dir_base, rf_ice, incoming_i, DIRECT, layer_type,\
    
     if TOON: 
 
-        wvl, albedo, BBA, BBAVIS, BBANIR, abs_slr, abs_vis_tot, heat_rt, F_btm_net = \
+        wvl, albedo, BBA, BBAVIS, BBANIR, abs_slr, abs_vis_tot, heat_rt, F_btm_net, F_top_pls = \
             toon_solver(APRX_TYP, DELTA, tau, g, SSA, mu_not, nbr_lyr, nbr_wvl, R_sfc, wvl, Fs, Fd,\
             L_snw, flx_slr)
 
 
     if ADD_DOUBLE:
 
-        wvl, flx_dwn_spc, albedo, BBA, BBAVIS, BBANIR, abs_slr, heat_rt, F_btm_net = \
+        wvl, flx_dwn_spc, albedo, BBA, BBAVIS, BBANIR, abs_slr, heat_rt, F_btm_net, F_top_pls = \
             adding_doubling_solver(rf_ice, APRX_TYP, DELTA, layer_type, tau, g, SSA, mu_not, nbr_lyr, nbr_wvl, R_sfc, wvl, Fs, Fd,\
             L_snw, flx_slr, DIRECT, dir_base)
 
 
-    return wvl, albedo, BBA, BBAVIS, BBANIR, abs_slr, heat_rt, F_btm_net
+    return wvl, albedo, BBA, BBAVIS, BBANIR, abs_slr, heat_rt, F_btm_net, F_top_pls

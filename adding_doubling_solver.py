@@ -503,4 +503,4 @@ def adding_doubling_solver(rf_ice, APRX_TYP, DELTA, layer_type, tau, g, SSA, mu_
     # abs_ground_vis  = F_abs_vis_btm       # visible absorption by underlying substrate [W/m2]
     # abs_ground_nir  = F_abs_nir_btm       # near-IR absorption by underlying substrate [W/m2]
 
-    return wvl, flx_dwn_spc, albedo, alb_slr, alb_vis, alb_nir, abs_snw_slr, heat_rt, F_btm_net
+    return wvl, flx_dwn_spc, albedo, alb_slr, alb_vis, alb_nir, abs_snw_slr, heat_rt, F_btm_net, F_top_pls
